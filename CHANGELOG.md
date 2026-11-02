@@ -5,7 +5,7 @@ All notable changes to G435 Hub. The format follows [Keep a Changelog](https://k
 ## [1.1.1] - 2026-11-02
 
 ### Fixed
-- The update manifest published with a release carried its notes as a list of lines instead of one string, which the updater cannot read. Copies of 1.1.0 could therefore not see updates; 1.1.1 is the first release with a valid manifest. If you installed 1.1.0, install 1.1.1 manually once; later updates arrive by themselves.
+- The update manifest published with 1.1.0 carried its notes as a list of lines instead of one string, which the updater cannot read. 1.1.1 publishes a valid manifest. Copies of 1.1.0 read the manifest of the latest release, so they should offer 1.1.1 by themselves (this is the first real test of the update path).
 
 ## [1.1.0] - 2026-11-02
 
