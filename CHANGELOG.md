@@ -2,6 +2,11 @@
 
 All notable changes to G435 Hub. The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow [SemVer](https://semver.org/).
 
+## [1.1.1] - 2026-11-02
+
+### Fixed
+- The update manifest published with a release carried its notes as a list of lines instead of one string, which the updater cannot read. Copies of 1.1.0 could therefore not see updates; 1.1.1 is the first release with a valid manifest. If you installed 1.1.0, install 1.1.1 manually once; later updates arrive by themselves.
+
 ## [1.1.0] - 2026-11-02
 
 ### Added

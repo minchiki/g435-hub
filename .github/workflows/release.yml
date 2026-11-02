@@ -66,7 +66,8 @@ jobs:
           Compress-Archive -Path portable/* -DestinationPath "out/G435-Hub_${v}_x64-portable.zip"
 
           # The manifest the in-app updater reads. The signature is of the installer bytes, so the rename is fine.
-          $notes = & pwsh -NoProfile -File scripts/changelog_section.ps1 -Version $v
+          # one string: the updater rejects an array of lines
+          $notes = (& pwsh -NoProfile -File scripts/changelog_section.ps1 -Version $v) -join "`n"
           $manifest = [ordered]@{
             version = $v
             notes = $notes
@@ -102,7 +103,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ github.ref_name }}'.TrimStart('v')
-          $section = & pwsh -NoProfile -File scripts/changelog_section.ps1 -Version $v
+          $section = (& pwsh -NoProfile -File scripts/changelog_section.ps1 -Version $v) -join "`n"
           Set-Content release-notes.md ($section + "`n`n" + (Get-Content -Encoding utf8 .github/release-table.md -Raw)) -Encoding utf8
           $files = (Get-ChildItem out -File | Where-Object Extension -ne '.sig').FullName
           gh release create "${{ github.ref_name }}" $files --title "G435 Hub ${{ github.ref_name }}" --notes-file release-notes.md
