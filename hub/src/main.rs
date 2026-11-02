@@ -6,7 +6,9 @@
 mod audio;
 mod autostart;
 mod battery;
+mod diag;
 mod hid;
+mod i18n;
 mod tray;
 mod worker;
 
@@ -37,10 +39,10 @@ pub fn show_window(app: &AppHandle) {
         let _ = w.set_focus();
         return;
     }
-    if let Some(cfg) = app.config().app.windows.first() {
-        if let Ok(w) = WebviewWindowBuilder::from_config(app, cfg).and_then(|b| b.build()) {
-            let _ = w.set_focus();
-        }
+    if let Some(cfg) = app.config().app.windows.first()
+        && let Ok(w) = WebviewWindowBuilder::from_config(app, cfg).and_then(|b| b.build())
+    {
+        let _ = w.set_focus();
     }
 }
 
@@ -48,7 +50,7 @@ fn kind(name: &str) -> Result<Kind, String> {
     match name {
         "headphones" => Ok(Kind::Headphones),
         "microphone" => Ok(Kind::Microphone),
-        _ => Err(format!("неизвестное устройство: {name}")),
+        _ => Err(format!("unknown device: {name}")),
     }
 }
 
@@ -85,6 +87,46 @@ fn set_alert(hub: State<Hub>, percent: u8) {
 }
 
 #[tauri::command]
+fn set_language(hub: State<Hub>, language: i18n::Language) {
+    hub.send(Cmd::SetLanguage(language));
+}
+
+#[tauri::command]
+fn set_auto_update(hub: State<Hub>, enabled: bool) {
+    hub.send(Cmd::SetAutoUpdate(enabled));
+}
+
+/// Text for a bug report (see diag.rs): no personal data.
+#[tauri::command]
+fn get_diagnostics(app: AppHandle, hub: State<Hub>) -> String {
+    let s = hub.state.lock().unwrap().clone();
+    diag::report(&app.package_info().version.to_string(), tauri::webview_version().ok(), &s)
+}
+
+#[tauri::command]
+fn copy_text(text: String) -> Result<(), String> {
+    diag::copy_to_clipboard(&text)
+}
+
+/// Opens a link in the default browser. Only the project's own pages and the credited sources are allowed.
+#[tauri::command]
+fn open_url(url: &str) -> Result<(), String> {
+    const ALLOWED: [&str; 3] = [
+        "https://github.com/minchiki/g435-hub",
+        "https://github.com/deddroid/logitech-g435-battery",
+        "https://sketchfab.com/3d-models/fone-logitech-g435-",
+    ];
+    if !ALLOWED.iter().any(|p| url.starts_with(p)) || url.chars().any(|c| c.is_whitespace() || c == '"') {
+        return Err("link not allowed".into());
+    }
+    std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", url])
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn clear_history(hub: State<Hub>) {
     hub.send(Cmd::ClearHistory);
 }
@@ -104,46 +146,73 @@ fn main() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_window(app)))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             let handle = app.handle().clone();
             let alert_handle = app.handle().clone();
             let data_dir = app.path().app_data_dir().ok();
             let last_icon = Mutex::new(None);
             let last_tip = Mutex::new(String::new());
-            let (tx, state) = worker::spawn(data_dir, move |s| {
-                let _ = handle.emit("hub://state", s);
-                let Some(t) = handle.tray_by_id(tray::ID) else { return };
-                let key = tray::key(s);
-                let mut icon = last_icon.lock().unwrap();
-                if *icon != Some(key) {
-                    *icon = Some(key);
-                    let _ = t.set_icon(Some(tray::render(s)));
-                }
-                let tip = tray::tooltip(s);
-                let mut last = last_tip.lock().unwrap();
-                if *last != tip {
-                    let _ = t.set_tooltip(Some(&tip));
-                    *last = tip;
-                }
-            }, move |percent| {
-                let _ = alert_handle.notification().builder()
-                    .title(format!("G435: заряд {percent}%"))
-                    .body("Поставьте гарнитуру на зарядку.")
-                    .show();
-            });
+            let last_lang = Mutex::new(None);
+            let (tx, state) = worker::spawn(
+                data_dir,
+                move |s| {
+                    let _ = handle.emit("hub://state", s);
+                    {
+                        let mut l = last_lang.lock().unwrap();
+                        if *l != Some(s.lang) {
+                            *l = Some(s.lang);
+                            if let Some(items) = handle.try_state::<tray::Items>() {
+                                items.set_lang(s.lang);
+                            }
+                        }
+                    }
+                    let Some(t) = handle.tray_by_id(tray::ID) else { return };
+                    let key = tray::key(s);
+                    let mut icon = last_icon.lock().unwrap();
+                    if *icon != Some(key) {
+                        *icon = Some(key);
+                        let _ = t.set_icon(Some(tray::render(s)));
+                    }
+                    let tip = tray::tooltip(s);
+                    let mut last = last_tip.lock().unwrap();
+                    if *last != tip {
+                        let _ = t.set_tooltip(Some(&tip));
+                        *last = tip;
+                    }
+                },
+                move |percent| {
+                    let lang = alert_handle.state::<Hub>().state.lock().unwrap().lang;
+                    let (title, body) = i18n::low_battery(lang, percent);
+                    let _ = alert_handle.notification().builder().title(title).body(body).show();
+                },
+            );
+            let lang = state.lock().unwrap().lang;
             app.manage(Hub { tx: Mutex::new(tx), state });
-            tray::setup(app.handle())?;
+            tray::setup(app.handle(), lang)?;
             if !start_in_tray {
                 show_window(app.handle());
             }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_state, refresh_battery, set_poll, set_volume, set_mute, set_alert, clear_history,
-            get_autostart, set_autostart
+            get_state,
+            refresh_battery,
+            set_poll,
+            set_volume,
+            set_mute,
+            set_alert,
+            set_language,
+            set_auto_update,
+            get_diagnostics,
+            copy_text,
+            open_url,
+            clear_history,
+            get_autostart,
+            set_autostart
         ])
         .build(tauri::generate_context!())
-        .expect("ошибка запуска G435 Hub");
+        .expect("failed to start G435 Hub");
 
     app.run(|_app, event| {
         // закрытие последнего окна не завершает программу: она остаётся в трее

@@ -1,0 +1,18 @@
+name: Feature request
+description: An idea for G435 Hub
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like the app to do?
+  - type: markdown
+    attributes:
+      value: |
+        Note: sidetone, the volume limiter and auto-off live in the headset firmware, and no USB commands are known for them. A request for those needs a captured protocol, not just an idea.

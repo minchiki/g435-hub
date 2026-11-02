@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { t, tn, setLang, getLang, locale, applyStatic, guessLang } from './i18n.js';
 
-const $ = (s) => document.querySelector(s);
+const $ =(s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const tauri = window.__TAURI__;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -21,7 +22,8 @@ const demoHistory = [3840, 3832, 3825, 3820, 3812, 3806, 3800, 3797, 3791, 3789]
   .map((mv, i, a) => [now - (a.length - 1 - i) * 30 * MIN, mv]);
 const demoState = {
   dongle: demo !== 'nodongle', reading: demo === 'loading', deferred: false,
-  error: demo === 'off' ? 'гарнитура выключена' : null,
+  error: demo === 'off' ? 'headset_off' : null,
+  lang: guessLang(null),
   battery: demo === 'loading' || demo === 'nodongle' ? null : {
     millivolts: demo === 'charging' ? 3905 : 3789, percent: demo === 'charging' ? 71 : 52, at_ms: now - 2 * MIN,
     charging: demo === 'charging', hours_left: demo === 'charging' ? null : 8.6, hours_source: 'trend',
@@ -29,19 +31,30 @@ const demoState = {
   headphones: demo === 'nodongle' ? null : { volume: 0.58, muted: false },
   microphone: demo === 'nodongle' ? null : { volume: 0.27, muted: false },
   history: demo === 'empty' || demo === 'loading' ? [] : demoHistory,
-  settings: { poll_minutes: 15, alert_percent: 15 },
+  settings: { poll_minutes: 15, alert_percent: 15, language: 'auto', auto_update: true },
 };
 const backend = tauri ? {
   invoke: (cmd, args) => tauri.core.invoke(cmd, args),
   onState: (fn) => tauri.event.listen('hub://state', (e) => fn(e.payload)),
   minimize: () => tauri.window.getCurrentWindow().minimize(),
   close: () => tauri.window.getCurrentWindow().close(),
+  version: () => tauri.app.getVersion(),
 } : {
-  invoke: async (cmd) => (cmd === 'get_state' ? demoState : cmd === 'get_autostart' ? false : null),
+  invoke: async (cmd) => (cmd === 'get_state' ? demoState : cmd === 'get_autostart' ? false
+    : cmd === 'get_diagnostics' ? 'G435 Hub (preview)\nno backend' : null),
   onState: () => {},
   minimize: () => {},
   close: () => {},
+  version: async () => '1.1.0',
 };
+
+// Links open in the default browser through the backend (it allows only known https:// prefixes).
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[target="_blank"]');
+  if (!a || !tauri) return;
+  e.preventDefault();
+  backend.invoke('open_url', { url: a.href });
+});
 
 // ================================================================ theme
 function applyTheme(value) {
@@ -64,7 +77,7 @@ function toast(title, text = '', kind = '') {
   el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
   const iconName = kind === 'success' ? 'circle-check' : kind === 'error' ? 'circle-alert' : 'info';
   el.innerHTML = `${icon(iconName)}<div><p class="toast__title"></p><p class="toast__text"></p></div>
-    <button class="btn btn--ghost btn--icon" aria-label="Закрыть">${icon('x')}</button>`;
+    <button class="btn btn--ghost btn--icon" aria-label="${t('toast.close')}">${icon('x')}</button>`;
   el.querySelector('.toast__title').textContent = title;
   el.querySelector('.toast__text').textContent = text;
   const close = () => { el.classList.add('is-leaving'); setTimeout(() => el.remove(), 200); };
@@ -77,10 +90,13 @@ function toast(title, text = '', kind = '') {
 // Одна сцена и один canvas: при смене раздела canvas переезжает в нужный .stage.
 const stage = (() => {
   const canvas = document.createElement('canvas');
-  canvas.setAttribute('aria-label', '3D-модель G435. Перетащите, чтобы повернуть');
   const hint = document.createElement('p');
   hint.className = 'stage__hint';
-  hint.textContent = 'Перетащите, чтобы повернуть';
+  const setTexts = () => {
+    canvas.setAttribute('aria-label', t('stage.aria'));
+    hint.textContent = t('stage.hint');
+  };
+  setTexts();
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' });
   // при масштабе 100% рендерим в 1.5× — кромки и мелкие детали заметно чётче; кадр рисуется только по запросу
   renderer.setPixelRatio(Math.min(Math.max(devicePixelRatio, 1.5), 2));
@@ -218,30 +234,34 @@ const stage = (() => {
       visible = true;
       resize();
     },
-    setColorway, applyTheme,
+    setColorway, applyTheme, setTexts,
   };
 })();
 
 // ================================================================ colorways
 const COLORWAYS = [
-  { id: 'blue', name: 'Blue & Raspberry', note: 'Синий корпус, малиновые амбушюры', chips: ['#2f64d6', '#e0486f'] },
-  { id: 'black', name: 'Black & Neon Yellow', note: 'Всё чёрное, неоновые пружинки', chips: ['#1a1b1e', '#cdf019'] },
-  { id: 'white', name: 'White & Lilac', note: 'Белый корпус, сиреневые оголовье и амбушюры', chips: ['#ecedf0', '#9caaea'] },
+  { id: 'blue', name: 'Blue & Raspberry', chips: ['#2f64d6', '#e0486f'] },
+  { id: 'black', name: 'Black & Neon Yellow', chips: ['#1a1b1e', '#cdf019'] },
+  { id: 'white', name: 'White & Lilac', chips: ['#ecedf0', '#9caaea'] },
 ];
 let currentColorway = COLORWAYS.some((c) => c.id === store.get('colorway')) ? store.get('colorway') : 'blue';
-$('#swatches').innerHTML = COLORWAYS.map((c) => `
-  <button class="card card--interactive swatch" role="radio" data-colorway="${c.id}" aria-checked="false">
-    <span class="swatch__chips">${c.chips.map((x) => `<i style="background:${x}"></i>`).join('')}</span>
-    <span><span class="card__title">${c.name}</span><span class="card__meta">${c.note}</span></span>
-  </button>`).join('');
+function renderSwatches() {
+  $('#swatches').innerHTML = COLORWAYS.map((c) => `
+    <button class="card card--interactive swatch" role="radio" data-colorway="${c.id}" aria-checked="${c.id === currentColorway}">
+      <span class="swatch__chips">${c.chips.map((x) => `<i style="background:${x}"></i>`).join('')}</span>
+      <span><span class="card__title">${c.name}</span><span class="card__meta">${t('look.' + c.id)}</span></span>
+    </button>`).join('');
+}
 function chooseColorway(id) {
   currentColorway = id;
   store.set('colorway', id);
   $$('[data-colorway]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.colorway === id)));
   stage.setColorway(id);
 }
-$$('[data-colorway]').forEach((b) => b.addEventListener('click', () => chooseColorway(b.dataset.colorway)));
-chooseColorway(currentColorway);
+$('#swatches').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-colorway]');
+  if (b) chooseColorway(b.dataset.colorway);
+});
 
 // ================================================================ router
 const ROUTES = ['overview', 'power', 'sound', 'look', 'controls', 'settings'];
@@ -256,27 +276,29 @@ function route() {
 addEventListener('hashchange', route);
 
 // ================================================================ formatting
-const hoursText = (h) => (h < 1 ? `${Math.max(5, Math.round(h * 60))} мин` : `${Math.round(h)} ч`);
+const hoursText = (h) => (h < 1 ? t('hours.min', { n: Math.max(5, Math.round(h * 60)) }) : t('hours.h', { n: Math.round(h) }));
 function ago(ms) {
   const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-  if (s < 60) return 'только что';
-  if (s < 3600) return `${Math.floor(s / 60)} мин назад`;
-  return `${Math.floor(s / 3600)} ч назад`;
+  if (s < 60) return t('time.now');
+  if (s < 3600) return t('time.min', { n: Math.floor(s / 60) });
+  return t('time.hour', { n: Math.floor(s / 3600) });
 }
-const hhmm = (t) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-const leftSource = (b) => (b.charging ? 'по росту напряжения'
-  : b.hours_source === 'trend' ? 'по скорости разрядки' : 'по паспорту, до 18 ч');
+const hhmm = (ms) => new Date(ms).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+const leftSource = (b) => t(b.charging ? 'src.charging' : b.hours_source === 'trend' ? 'src.trend' : 'src.spec');
+/** Backend error code (hid::Error::code) to a phrase. */
+const errText = (code) => (code.startsWith('hid_error:') ? t('err.hid_error', { detail: code.slice(10) })
+  : t(`err.${code}`) === `err.${code}` ? code : t(`err.${code}`));
 function connection(s) {
-  if (!s.dongle) return { key: 'nodongle', text: 'Донгл не подключён', dot: 'err', badge: 'error' };
-  if (s.error && s.error.includes('выключена')) return { key: 'off', text: 'Гарнитура выключена', dot: 'warn', badge: 'warning' };
-  return { key: 'ok', text: 'Подключено', dot: 'ok', badge: 'success' };
+  if (!s.dongle) return { key: 'nodongle', text: t('dev.nodongle'), dot: 'err', badge: 'error' };
+  if (s.error === 'headset_off') return { key: 'off', text: t('dev.off'), dot: 'warn', badge: 'warning' };
+  return { key: 'ok', text: t('dev.ok'), dot: 'ok', badge: 'success' };
 }
 
 // ================================================================ empty states
 function emptyHtml(kind) {
   const E = {
-    nodongle: ['usb', 'Донгл не подключён', 'Вставьте приёмник LIGHTSPEED в USB-порт компьютера. Хаб найдёт его сам — ничего нажимать не нужно.', ''],
-    off: ['power', 'Гарнитура выключена', 'Нажмите кнопку питания на левой чашке и подождите пару секунд, пока индикатор не загорится.', '<button class="btn" data-action="refresh">Проверить снова</button>'],
+    nodongle: ['usb', t('empty.nodongle.title'), t('empty.nodongle.text'), ''],
+    off: ['power', t('empty.off.title'), t('empty.off.text'), `<button class="btn" data-action="refresh">${t('empty.off.retry')}</button>`],
   }[kind];
   return `<div class="empty"><span class="empty__icon">${icon(E[0]).replace('class="icon"', 'class="icon icon--20"')}</span>
     <h2 class="empty__title">${E[1]}</h2><p class="empty__text">${E[2]}</p>${E[3]}</div>`;
@@ -299,7 +321,8 @@ function render(s) {
   $('#dev-dot').className = `dot dot--${c.dot}`;
   $('#dev-status').textContent = c.text;
   $('#dev-battery').textContent = b && c.key === 'ok'
-    ? `${b.percent}%${b.charging ? ' · заряжается' : b.hours_left != null ? ` · ≈ ${hoursText(b.hours_left)}` : ''}` : '';
+    ? (b.charging ? t('dev.charging', { p: b.percent })
+      : b.hours_left != null ? t('dev.left', { p: b.percent, t: hoursText(b.hours_left) }) : `${b.percent}%`) : '';
 
   // обзор
   const badge = $('#ov-badge');
@@ -314,9 +337,9 @@ function render(s) {
   $('#ov-stats').hidden = c.key === 'nodongle';
   if (b) {
     $('#ov-pct').innerHTML = `${b.percent}<small>%</small>`;
-    $('#ov-mv').textContent = `${b.millivolts} мВ · ${ago(b.at_ms)}`;
-    $('#ov-left').textContent = c.key === 'off' ? '—' : b.charging ? 'Заряжается' : b.hours_left != null ? `≈ ${hoursText(b.hours_left)}` : '—';
-    $('#ov-left-src').textContent = c.key === 'off' ? 'гарнитура выключена' : leftSource(b);
+    $('#ov-mv').textContent = t('meta.mv', { mv: b.millivolts, ago: ago(b.at_ms) });
+    $('#ov-left').textContent = c.key === 'off' ? '—' : b.charging ? t('stat.charging') : b.hours_left != null ? `≈ ${hoursText(b.hours_left)}` : '—';
+    $('#ov-left-src').textContent = c.key === 'off' ? t('stat.off') : leftSource(b);
   } else if (!s.reading) {
     $('#ov-pct').textContent = '—';
     $('#ov-left').textContent = '—';
@@ -330,28 +353,29 @@ function render(s) {
   $('#pw-off').hidden = c.key !== 'off';
   if (b) {
     $('#pw-pct').textContent = b.percent;
-    $('#pw-meta').textContent = `${b.millivolts} мВ · обновлено ${ago(b.at_ms)}`;
-    $('#pw-left').textContent = c.key === 'off' ? '—' : b.charging ? 'Идёт зарядка' : b.hours_left != null ? `≈ ${hoursText(b.hours_left)}` : '—';
-    $('#pw-left-src').textContent = c.key === 'off' ? 'Гарнитура выключена' : leftSource(b);
+    $('#pw-meta').textContent = t('meta.mv.updated', { mv: b.millivolts, ago: ago(b.at_ms) });
+    $('#pw-left').textContent = c.key === 'off' ? '—' : b.charging ? t('pw.charging.now') : b.hours_left != null ? `≈ ${hoursText(b.hours_left)}` : '—';
+    $('#pw-left-src').textContent = c.key === 'off' ? t('pw.left.off') : leftSource(b);
+  } else {
+    $('#pw-left-src').textContent = t('pw.left.none');
   }
   $('#pw-charging').hidden = !(b && b.charging);
   $('#pw-deferred').hidden = !s.deferred;
   $('#pw-error').hidden = !s.error || c.key === 'off';
-  $('#pw-error-text').textContent = s.error ? `Не удалось прочитать заряд: ${s.error}. Хаб повторит через минуту.` : '';
+  $('#pw-error-text').textContent = s.error ? t('pw.error', { err: errText(s.error) }) : '';
   const btn = $('#btn-refresh');
   btn.disabled = !s.dongle;
   btn.classList.toggle('is-loading', !!s.reading);
   if ($('[data-page="power"]').classList.contains('is-active')) renderChart(s.history || []);
   $('#hist-count').textContent = s.history && s.history.length
-    ? `${s.history.length} ${plural(s.history.length, 'замер', 'замера', 'замеров')} за сутки · хранится 7 дней`
-    : 'Хранится 7 дней на этом компьютере';
+    ? tn('set.history.count', s.history.length) : t('set.history.hint');
 
   // звук
   for (const kind of ['headphones', 'microphone']) renderLevel(kind, s[kind]);
   const hp = s.headphones;
   if (hp && !dragging.ov) {
     const v = Math.round(hp.volume * 100);
-    $('#ov-vol').textContent = hp.muted ? 'Без звука' : `${v}%`;
+    $('#ov-vol').textContent = hp.muted ? t('stat.muted') : `${v}%`;
     $('#ov-vol-range').value = v;
     $('#ov-vol-range').style.setProperty('--fill', `${v}%`);
   }
@@ -361,30 +385,30 @@ function render(s) {
   if (s.settings) {
     setPollUi(s.settings.poll_minutes);
     if (document.activeElement !== $('#alert')) $('#alert').value = s.settings.alert_percent;
+    $$('[data-language-value]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.languageValue === s.settings.language)));
+    $('#autoupdate').setAttribute('aria-checked', String(!!s.settings.auto_update));
   }
 
   // тосты по завершении ручного чтения
   if (refreshing && prev && prev.reading && !s.reading) {
     refreshing = false;
-    if (s.error) toast('Не удалось прочитать заряд', `${capitalize(s.error)}.`, 'error');
-    else if (b) toast('Заряд обновлён', `${b.percent}% · ${b.millivolts} мВ`, 'success');
+    if (s.error) toast(t('toast.failed'), `${capitalize(errText(s.error))}.`, 'error');
+    else if (b) toast(t('toast.updated'), t('toast.updated.text', { p: b.percent, mv: b.millivolts }), 'success');
   }
 }
-const plural = (n, one, few, many) => (n % 10 === 1 && n % 100 !== 11 ? one
-  : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many);
-const capitalize = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 // ---------------------------------------------------------------- уровни звука
 const dragging = { headphones: false, microphone: false, ov: false };
 function renderLevel(kind, lv) {
   const box = $(`#lv-${kind}`);
   box.classList.toggle('is-unavailable', !lv);
-  if (!lv) { $(`#v-${kind}`).textContent = 'Не найдено'; return; }
+  if (!lv) { $(`#v-${kind}`).textContent = t('snd.notfound'); return; }
   const v = Math.round(lv.volume * 100);
   if (!dragging[kind]) {
     $(`#r-${kind}`).value = v;
     $(`#r-${kind}`).style.setProperty('--fill', `${v}%`);
-    $(`#v-${kind}`).textContent = lv.muted ? 'Выключен' : `${v}%`;
+    $(`#v-${kind}`).textContent = lv.muted ? t(kind === 'headphones' ? 'snd.muted' : 'snd.off') : `${v}%`;
   }
   box.classList.toggle('is-muted', lv.muted);
   const m = $(`#m-${kind}`);
@@ -392,7 +416,7 @@ function renderLevel(kind, lv) {
   const on = kind === 'headphones' ? 'volume-2' : 'mic';
   const off = kind === 'headphones' ? 'volume-x' : 'mic-off';
   m.innerHTML = icon(lv.muted ? off : on);
-  m.setAttribute('aria-label', lv.muted ? 'Включить' : 'Выключить');
+  m.setAttribute('aria-label', t(lv.muted ? 'snd.unmute' : 'snd.mute'));
 }
 function bindSlider(range, kind, key = kind) {
   range.addEventListener('pointerdown', () => { dragging[key] = true; });
@@ -417,7 +441,7 @@ for (const kind of ['headphones', 'microphone']) {
 function refresh() {
   refreshing = true;
   backend.invoke('refresh_battery');
-  if (!tauri) setTimeout(() => toast('Заряд обновлён', '52% · 3789 мВ', 'success'), 600);
+  if (!tauri) setTimeout(() => toast(t('toast.updated'), t('toast.updated.text', { p: 52, mv: 3789 }), 'success'), 600);
 }
 $('#btn-refresh').addEventListener('click', refresh);
 
@@ -443,20 +467,20 @@ function renderChart(points) {
   const HOUR = 3600000, t1 = Date.now();
   const t0 = enough ? Math.min(t1 - HOUR, Math.max(t1 - 24 * HOUR, points[0][0])) : t1 - HOUR;
   const hours = Math.max(1, Math.round((t1 - t0) / HOUR));
-  $('#chart-title').textContent = hours >= 24 ? 'Заряд за сутки' : `Заряд за ${hours} ${plural(hours, 'час', 'часа', 'часов')}`;
+  $('#chart-title').textContent = hours >= 24 ? t('chart.day') : tn('chart.hours', hours);
   $('#chart-range').textContent = enough ? `${hhmm(t0)} – ${hhmm(t1)}` : '';
-  $('#chart-table tbody').replaceChildren(...points.map(([t, mv]) => {
+  $('#chart-table tbody').replaceChildren(...points.map(([tm, mv]) => {
     const tr = document.createElement('tr');
-    for (const v of [hhmm(t), `${Math.round(mvToPercent(mv))}%`, `${mv} мВ`]) {
+    for (const v of [hhmm(tm), `${Math.round(mvToPercent(mv))}%`, `${mv} ${t('unit.mv')}`]) {
       const td = document.createElement('td'); td.textContent = v; tr.append(td);
     }
     return tr;
   }));
   if (!enough) return;
   const W = plot.clientWidth, H = plot.clientHeight, padL = 36, padB = 24, padT = 8;
-  const x = (t) => padL + ((t - t0) / (t1 - t0)) * (W - padL);
+  const x = (tm) => padL + ((tm - t0) / (t1 - t0)) * (W - padL);
   const y = (p) => padT + (1 - p / 100) * (H - padB - padT);
-  chartPts = points.map(([t, mv]) => ({ t, mv, p: mvToPercent(mv), x: x(t), y: y(mvToPercent(mv)) }));
+  chartPts = points.map(([tm, mv]) => ({ t: tm, mv, p: mvToPercent(mv), x: x(tm), y: y(mvToPercent(mv)) }));
   // Перерыв больше 2 ч (хаб или гарнитура были выключены) — разрыв линии: на нём ничего не измерено.
   const runs = [];
   for (const q of chartPts) {
@@ -466,8 +490,8 @@ function renderChart(points) {
   const pts = (run) => run.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(' ');
   const grid = [0, 50, 100].map((p) => `<line class="grid" x1="${padL}" x2="${W}" y1="${y(p)}" y2="${y(p)}"/>
     <text class="axis" x="${padL - 8}" y="${y(p) + 4}" text-anchor="end">${p}%</text>`).join('');
-  const ticks = [t0, (t0 + t1) / 2, t1].map((t, i) => `<text class="axis" x="${x(t)}" y="${H - 4}"
-    text-anchor="${['start', 'middle', 'end'][i]}">${i === 2 ? 'сейчас' : hhmm(t)}</text>`).join('');
+  const ticks = [t0, (t0 + t1) / 2, t1].map((tm, i) => `<text class="axis" x="${x(tm)}" y="${H - 4}"
+    text-anchor="${['start', 'middle', 'end'][i]}">${i === 2 ? t('chart.now') : hhmm(tm)}</text>`).join('');
   const charge = runs.map((run) => run.slice(1).map((q, i) => (q.mv - run[i].mv >= 15
     ? `<line class="line line--charge" x1="${run[i].x}" y1="${run[i].y}" x2="${q.x}" y2="${q.y}"/>` : '')).join('')).join('');
   const body = runs.map((run) => run.length < 2
@@ -488,7 +512,7 @@ function chartHover(clientX) {
   cross.setAttribute('x1', q.x); cross.setAttribute('x2', q.x); cross.setAttribute('visibility', 'visible');
   marker.setAttribute('cx', q.x); marker.setAttribute('cy', q.y); marker.setAttribute('visibility', 'visible');
   $('#tip-value').textContent = `${Math.round(q.p)}%`;
-  $('#tip-time').textContent = `${hhmm(q.t)} · ${q.mv} мВ`;
+  $('#tip-time').textContent = `${hhmm(q.t)} · ${q.mv} ${t('unit.mv')}`;
   tip.hidden = false;
   tip.style.left = `${Math.min(Math.max(q.x, 64), r.width - 64)}px`;
   tip.style.top = `${Math.max(0, q.y - 56)}px`;
@@ -503,8 +527,8 @@ $('#chart-plot').addEventListener('pointerleave', chartLeave);
 new ResizeObserver(() => lastState && $('[data-page="power"]').classList.contains('is-active') && renderChart(lastState.history || [])).observe($('#chart-plot'));
 
 // ---------------------------------------------------------------- дропдаун опроса
-const POLL_LABEL = { 5: 'Каждые 5 минут', 15: 'Каждые 15 минут', 30: 'Каждые 30 минут', 0: 'Только вручную' };
-const dd = $('#poll'), ddBtn = dd.querySelector('.dropdown__trigger'), ddItems = [...dd.querySelectorAll('.menu__item')];
+const POLL_LABEL = new Proxy({}, { get: (_, k) => (['5', '15', '30', '0'].includes(String(k)) ? t(`poll.${k}`) : undefined) });
+const dd =$('#poll'), ddBtn = dd.querySelector('.dropdown__trigger'), ddItems = [...dd.querySelectorAll('.menu__item')];
 let ddActive = -1;
 function setPollUi(minutes) {
   const v = String(minutes || 0);
@@ -569,9 +593,9 @@ autostart.addEventListener('click', async () => {
   try {
     await backend.invoke('set_autostart', { enabled: on });
     autostart.setAttribute('aria-checked', String(on));
-    toast(on ? 'Автозапуск включён' : 'Автозапуск выключен', on ? 'Хаб будет стартовать в трей вместе с Windows.' : '');
+    toast(t(on ? 'toast.autostart.on' : 'toast.autostart.off'), on ? t('toast.autostart.on.text') : '');
   } catch (e) {
-    toast('Не удалось изменить автозапуск', String(e), 'error');
+    toast(t('toast.autostart.failed'), String(e), 'error');
   } finally { autostart.disabled = false; }
 });
 
@@ -580,15 +604,124 @@ $('#btn-clear').addEventListener('click', () => modal.showModal());
 modal.addEventListener('close', () => {
   if (modal.returnValue !== 'confirm') return;
   backend.invoke('clear_history');
-  toast('История очищена', 'Оценка «осталось» начнёт считаться заново.', 'success');
+  toast(t('toast.cleared'), t('toast.cleared.text'), 'success');
 });
 
 $('#btn-min').addEventListener('click', () => backend.minimize());
 $('#btn-close').addEventListener('click', () => backend.close());
 
+// ---------------------------------------------------------------- язык
+// Выбор хранится в бэкенде (трей и уведомления тоже переводятся); в браузере предпросмотра — локально.
+function applyLanguage(lang) {
+  if (lang === getLang()) return;
+  setLang(lang);
+  store.set('lang', lang);
+  applyStatic();
+  stage.setTexts();
+  renderSwatches();
+  if (lastState) render(lastState);
+  renderUpdateUi();
+}
+$('#language').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-language-value]');
+  if (!b) return;
+  if (tauri) backend.invoke('set_language', { language: b.dataset.languageValue });
+  else {
+    const v = b.dataset.languageValue;
+    demoState.settings.language = v;
+    applyLanguage(v === 'auto' ? guessLang(null) : v);
+  }
+});
+
+// ---------------------------------------------------------------- обновления и диагностика
+// Единственное обращение приложения к сети: спросить у GitHub номер последней версии.
+let pendingUpdate = null;
+let updateState = 'idle'; // idle | checking | latest | available | installing | failed | install-failed
+function renderUpdateUi() {
+  const status = $('#upd-status'), btn = $('#btn-update');
+  const texts = {
+    idle: '', checking: t('upd.checking'), latest: t('upd.latest'),
+    available: pendingUpdate ? t('upd.available', { v: pendingUpdate.version }) : '',
+    installing: t('upd.installing'), failed: t('upd.failed'), 'install-failed': t('upd.install.failed'),
+  };
+  status.textContent = texts[updateState];
+  const canInstall = updateState === 'available' && pendingUpdate;
+  btn.textContent = canInstall ? t('upd.install', { v: pendingUpdate.version }) : t('upd.check');
+  btn.classList.toggle('btn--primary', !!canInstall);
+  btn.classList.toggle('is-loading', updateState === 'checking' || updateState === 'installing');
+  btn.disabled = updateState === 'checking' || updateState === 'installing' || !tauri;
+}
+async function checkForUpdate() {
+  if (!tauri?.updater) return;
+  updateState = 'checking';
+  renderUpdateUi();
+  try {
+    pendingUpdate = await tauri.updater.check();
+    updateState = pendingUpdate ? 'available' : 'latest';
+  } catch {
+    updateState = 'failed';
+  }
+  store.set('upd_checked', String(Date.now()));
+  renderUpdateUi();
+}
+async function installUpdate() {
+  updateState = 'installing';
+  renderUpdateUi();
+  try {
+    await pendingUpdate.downloadAndInstall(); // Windows закрывает приложение и запускает установщик
+  } catch {
+    updateState = 'install-failed';
+    renderUpdateUi();
+  }
+}
+$('#btn-update').addEventListener('click', () => (updateState === 'available' && pendingUpdate ? installUpdate() : checkForUpdate()));
+$('#autoupdate').addEventListener('click', () => {
+  const on = $('#autoupdate').getAttribute('aria-checked') !== 'true';
+  $('#autoupdate').setAttribute('aria-checked', String(on));
+  backend.invoke('set_auto_update', { enabled: on });
+});
+let autoChecked = false;
+function maybeAutoCheck(s) {
+  if (autoChecked || !tauri || !s.settings) return;
+  autoChecked = true;
+  const last = Number(store.get('upd_checked')) || 0;
+  if (s.settings.auto_update && Date.now() - last > 24 * 3600 * 1000) checkForUpdate();
+}
+
+$('#btn-diag').addEventListener('click', async () => {
+  try {
+    const text = '```\n' + await backend.invoke('get_diagnostics') + '```';
+    try {
+      if (tauri) await backend.invoke('copy_text', { text }); // буфер обмена Windows через бэкенд: не зависит от фокуса окна
+      else await navigator.clipboard.writeText(text);
+    } catch { // запасной путь — через выделение
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.append(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (!ok) throw new Error('clipboard unavailable');
+    }
+    toast(t('diag.copied'), t('diag.copied.text'), 'success');
+  } catch (e) {
+    toast(t('diag.failed'), String(e), 'error');
+  }
+});
+
+backend.version().then((v) => { $('#about-version').textContent = v; });
+
 // ================================================================ start
+setLang(guessLang(store.get('lang')));
 applyTheme(new URLSearchParams(location.search).get('theme') || store.get('theme') || 'system');
+applyStatic();
+renderSwatches();
 route();
-backend.onState(render);
-backend.invoke('get_state').then((s) => s && render(s));
+renderUpdateUi();
+backend.onState((s) => { if (s.lang && s.lang !== getLang()) applyLanguage(s.lang); render(s); maybeAutoCheck(s); });
+backend.invoke('get_state').then((s) => {
+  if (!s) return;
+  if (s.lang && s.lang !== getLang()) applyLanguage(s.lang);
+  render(s);
+  maybeAutoCheck(s);
+});
 setInterval(() => lastState && render(lastState), 30000);

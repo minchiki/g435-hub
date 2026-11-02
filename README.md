@@ -30,9 +30,14 @@ native app that costs about **6 MB** of RAM while it sits in the tray.
     <td width="50%"><img src="assets/screenshots/look-dark.png" alt="Black and neon yellow colorway"></td>
     <td width="50%"><img src="assets/screenshots/look-light.png" alt="White and lilac colorway, light theme"></td>
   </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/settings-dark.png" alt="Settings"></td>
+    <td width="50%"><img src="assets/screenshots/power-light.png" alt="Battery chart, light theme"></td>
+  </tr>
 </table>
 
-> The interface is currently in **Russian** only. The screenshots show the real app with real readings.
+> The interface is in **English and Russian**. It follows the Windows display language and can be switched in
+> Settings. The screenshots show the real app with real readings.
 
 ## Features
 
@@ -44,6 +49,11 @@ native app that costs about **6 MB** of RAM while it sits in the tray.
 - **3D model.** Drag to rotate. Three colorways: Blue & Raspberry, Black & Neon Yellow, White & Lilac.
 - **Light and dark themes**, start with Windows straight into the tray, a quick guide to the headset's
   button combinations.
+- **English and Russian interface**, including the tray menu and the notification.
+- **Updates from inside the app.** It asks GitHub for a newer version when the window opens (you can switch
+  this off), and installs it after you confirm. Update packages are signed.
+- **Diagnostics in one click.** Settings → Support copies a short report (versions, dongle state, last
+  readings, no personal data) to paste into a bug report.
 - **Gentle on the headset.** Scheduled reads wait for a pause in the audio, and after 20 minutes of silence
   the app polls only once an hour so the headset's own auto-off timer is not kept awake.
 
@@ -65,7 +75,10 @@ Windows 10 if missing). Plug in the G435 dongle, switch the headset on, start th
 
 **SmartScreen.** The builds are not code-signed (a certificate costs money and this is a hobby project), so
 Windows may say "Windows protected your PC" on first run. Choose *More info → Run anyway*. You can verify a
-download against `SHA256SUMS.txt`, or [build it yourself](#build-from-source).
+download against `SHA256SUMS.txt`, or [build it yourself](#build-from-source). The update packages the app
+installs by itself are signed with a separate key, and the app refuses one that does not match.
+
+Once installed, the app updates itself from **Settings → Updates**.
 
 **Only Windows.** The app reads the dongle through the Windows HID API and controls volume through Windows
 Core Audio, so there are no macOS or Linux builds. The battery protocol itself is portable; a port would need
@@ -96,7 +109,8 @@ Logitech models use other protocols; do not expect them to work.
 may attribute toasts to a generic host. This has not been checked on every setup.
 
 **Where is my data?** `%APPDATA%\local.g435hub\` holds the battery history and settings (two small JSON
-files). Nothing leaves your PC; the app makes no network requests.
+files). Nothing about you leaves your PC. The app's only network request is the update check to `github.com`,
+made when the window opens; switch it off in Settings → Updates if you prefer.
 
 **How do I remove it?** Uninstall from Windows *Settings → Apps*, or delete the portable folder. Delete
 `%APPDATA%\local.g435hub\` to remove the history, and turn off *Start with Windows* in the app first.
@@ -117,18 +131,23 @@ The `x86_64-pc-windows-gnu` toolchain also works, but needs MinGW-w64 on `PATH` 
 no spaces in its path (`CARGO_TARGET_DIR`), because `windres` cannot handle spaces. Cargo does not notice a
 changed `hub/icons/icon.ico`: run `cargo clean --release -p g435-hub` after editing it.
 
-Release builds are made by [GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed.
+Every pull request runs formatting, clippy, the tests and a translation check
+([CI](.github/workflows/ci.yml)). Release builds are made by
+[GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed. See [CONTRIBUTING](CONTRIBUTING.md),
+[SECURITY](SECURITY.md) and the [changelog](CHANGELOG.md).
 
 <details>
 <summary><b>Project layout</b></summary>
 
 | Path | What is there |
 |---|---|
-| `hub/src` | Rust: `hid.rs` (dongle protocol), `battery.rs` (estimation), `worker.rs` (background thread), `audio.rs` (Core Audio), `tray.rs`, `autostart.rs`, `main.rs` |
-| `hub/ui` | The interface: `tokens.css` (design tokens, light and dark), `components.css` and `components.html` (every component state), `app.css`, `index.html`, `app.js`, vendored three.js, Geist font, Lucide icons, logo in `brand/` |
+| `hub/src` | Rust: `hid.rs` (dongle protocol), `battery.rs` (estimation), `worker.rs` (background thread), `audio.rs` (Core Audio), `tray.rs`, `i18n.rs` (language), `diag.rs` (diagnostics, clipboard), `autostart.rs`, `main.rs` |
+| `hub/ui` | The interface: `tokens.css` (design tokens, light and dark), `components.css` and `components.html` (every component state), `app.css`, `index.html`, `app.js`, `i18n.js` (English and Russian strings), vendored three.js, Geist font, Lucide icons, logo in `brand/` |
 | `scripts/build_model.py` | Builds the model assets from the source GLB (numpy, Pillow): pixel classes → colorways, per-material roughness map |
 | `scripts/build_icon.py`, `build_logo.mjs` | App icon (one hand-tuned frame per size) and logo files |
 | `scripts/battery.py` | The same battery read from the command line, no dependencies |
+| `scripts/check_i18n.mjs` | CI check that both languages have the same keys |
+| `packaging/make-manifests.ps1` | winget and Scoop manifests for a release |
 | `docs/battery.md` | Protocol, estimation algorithm, calibration |
 
 </details>

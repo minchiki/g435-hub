@@ -94,13 +94,8 @@ pub fn estimate(history: &[Sample], prev: Option<&Estimate>) -> Option<Estimate>
 
     let start = discharge_start(history);
     let segment = &history[start..];
-    let window: Vec<Sample> = segment
-        .iter()
-        .rev()
-        .take_while(|s| last.at_ms - s.at_ms <= SMOOTH_WINDOW_MS)
-        .take(3)
-        .copied()
-        .collect();
+    let window: Vec<Sample> =
+        segment.iter().rev().take_while(|s| last.at_ms - s.at_ms <= SMOOTH_WINDOW_MS).take(3).copied().collect();
     // Медиана гасит шум, но при быстром падении (конец разрядки) тянет процент вверх:
     // если последний замер ниже медианы больше, чем шум (±9 мВ), верим ему.
     let median = median_mv(&window);
@@ -134,10 +129,8 @@ fn fit_rate(segment: &[Sample]) -> Option<f32> {
         return None;
     }
     let t0 = segment[0].at_ms;
-    let pts: Vec<(f32, f32)> = segment
-        .iter()
-        .map(|s| ((s.at_ms - t0) as f32 / 3.6e6, millivolts_to_percent(s.mv) as f32))
-        .collect();
+    let pts: Vec<(f32, f32)> =
+        segment.iter().map(|s| ((s.at_ms - t0) as f32 / 3.6e6, millivolts_to_percent(s.mv) as f32)).collect();
     let n = pts.len() as f32;
     let (sx, sy) = pts.iter().fold((0.0, 0.0), |(a, b), (x, y)| (a + x, b + y));
     let (mx, my) = (sx / n, sy / n);
@@ -206,8 +199,18 @@ mod tests {
 
     // Реальная разрядка G435, ночь на 2026-11-02: минуты от 23:42, мВ (шаг ~30 мин).
     const NIGHT: [(u64, u16); 12] = [
-        (0, 3750), (34, 3735), (85, 3720), (140, 3705), (201, 3702), (261, 3699),
-        (292, 3690), (322, 3672), (352, 3624), (382, 3555), (413, 3450), (438, 3318),
+        (0, 3750),
+        (34, 3735),
+        (85, 3720),
+        (140, 3705),
+        (201, 3702),
+        (261, 3699),
+        (292, 3690),
+        (322, 3672),
+        (352, 3624),
+        (382, 3555),
+        (413, 3450),
+        (438, 3318),
     ];
     // Реальная зарядка там же, днём: минуты от первого замера, мВ.
     const CHARGE: [(u64, u16); 7] = [(0, 3810), (5, 3912), (9, 3939), (10, 3945), (14, 3978), (21, 3999), (22, 4005)];

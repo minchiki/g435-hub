@@ -14,7 +14,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Versions match the tag
+        shell: pwsh
+        run: |
+          $conf = (Get-Content hub/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path hub/Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          if ($conf -ne $cargo) { throw "tauri.conf.json ($conf) and Cargo.toml ($cargo) disagree" }
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne "v$conf") {
+            throw "tag ${{ github.ref_name }} does not match version $conf"
+          }
+
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -24,35 +36,64 @@ jobs:
         with:
           node-version: 20
 
-      - name: Test
+      - name: Check and test
         working-directory: hub
-        run: cargo test --release
+        run: |
+          cargo fmt --check
+          cargo clippy --release --all-targets -- -D warnings
+          cargo test --release
 
       - name: Build installers
         working-directory: hub
+        env:
+          # Signs the update packages. Losing this key means installed copies can no longer update.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx --yes @tauri-apps/cli@2 build
 
       - name: Collect release files
         shell: pwsh
         run: |
           $v = (Get-Content hub/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $tag = "v$v"
           New-Item -ItemType Directory -Force out, portable | Out-Null
-          Copy-Item (Get-ChildItem hub/target/release/bundle/nsis/*-setup.exe).FullName "out/G435-Hub_${v}_x64-setup.exe"
+          $setup = Get-ChildItem hub/target/release/bundle/nsis/*-setup.exe
+          Copy-Item $setup.FullName "out/G435-Hub_${v}_x64-setup.exe"
+          Copy-Item "$($setup.FullName).sig" "out/G435-Hub_${v}_x64-setup.exe.sig"
           Copy-Item (Get-ChildItem hub/target/release/bundle/msi/*.msi).FullName "out/G435-Hub_${v}_x64.msi"
           Copy-Item hub/target/release/g435-hub.exe "portable/G435 Hub.exe"
           Copy-Item LICENSE, THIRD-PARTY-NOTICES portable/
           Compress-Archive -Path portable/* -DestinationPath "out/G435-Hub_${v}_x64-portable.zip"
+
+          # The manifest the in-app updater reads. The signature is of the installer bytes, so the rename is fine.
+          $notes = & pwsh -NoProfile -File scripts/changelog_section.ps1 -Version $v
+          $manifest = [ordered]@{
+            version = $v
+            notes = $notes
+            pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            platforms = [ordered]@{
+              'windows-x86_64' = [ordered]@{
+                signature = (Get-Content "out/G435-Hub_${v}_x64-setup.exe.sig" -Raw).Trim()
+                url = "https://github.com/${{ github.repository }}/releases/download/$tag/G435-Hub_${v}_x64-setup.exe"
+              }
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content out/latest.json -Encoding utf8
+
           Push-Location out
-          Get-ChildItem -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object {
+          Get-ChildItem -File | Where-Object { $_.Name -notin 'SHA256SUMS.txt', 'latest.json' -and $_.Extension -ne '.sig' } | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
           } | Set-Content SHA256SUMS.txt -Encoding ascii
           Pop-Location
-          Get-ChildItem out | Format-Table Name, Length
+          pwsh -NoProfile -File packaging/make-manifests.ps1 -Version $v -Repo ${{ github.repository }} -Sums out/SHA256SUMS.txt -Out packaging-out
+          Get-ChildItem out, packaging-out -Recurse -File | Format-Table FullName, Length
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: out/*
+          path: |
+            out/*
+            packaging-out/**
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -60,5 +101,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" (Get-ChildItem out -File).FullName `
-            --title "G435 Hub ${{ github.ref_name }}" --notes-file .github/release-notes.md
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          $section = & pwsh -NoProfile -File scripts/changelog_section.ps1 -Version $v
+          Set-Content release-notes.md ($section + "`n`n" + (Get-Content -Encoding utf8 .github/release-table.md -Raw)) -Encoding utf8
+          $files = (Get-ChildItem out -File | Where-Object Extension -ne '.sig').FullName
+          gh release create "${{ github.ref_name }}" $files --title "G435 Hub ${{ github.ref_name }}" --notes-file release-notes.md

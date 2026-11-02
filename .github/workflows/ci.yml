@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: hub
+      - name: Format
+        working-directory: hub
+        run: cargo fmt --check
+      - name: Clippy
+        working-directory: hub
+        run: cargo clippy --release --all-targets -- -D warnings
+      - name: Tests
+        working-directory: hub
+        run: cargo test --release
+      - name: UI scripts parse and translations match
+        shell: pwsh
+        run: |
+          node --check hub/ui/app.js
+          node --check hub/ui/i18n.js
+          node scripts/check_i18n.mjs

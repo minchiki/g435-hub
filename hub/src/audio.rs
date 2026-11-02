@@ -34,8 +34,7 @@ pub fn init_com() {
 
 pub fn find(kind: Kind) -> Option<Endpoint> {
     unsafe {
-        let enumerator: IMMDeviceEnumerator =
-            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+        let enumerator: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
         let flow = match kind {
             Kind::Headphones => eRender,
             Kind::Microphone => eCapture,
@@ -43,7 +42,9 @@ pub fn find(kind: Kind) -> Option<Endpoint> {
         let devices = enumerator.EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE).ok()?;
         for i in 0..devices.GetCount().ok()? {
             let Ok(device) = devices.Item(i) else { continue };
-            let Ok(store): windows::core::Result<IPropertyStore> = device.OpenPropertyStore(STGM_READ) else { continue };
+            let Ok(store): windows::core::Result<IPropertyStore> = device.OpenPropertyStore(STGM_READ) else {
+                continue;
+            };
             let Ok(name) = store.GetValue(&PKEY_Device_FriendlyName) else { continue };
             if !name.to_string().contains("G435") {
                 continue;

@@ -4,6 +4,7 @@
 use crate::audio::{self, Endpoint, Kind, Level};
 use crate::battery::{self, Estimate, HoursSource, Sample};
 use crate::hid;
+use crate::i18n::{Lang, Language};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
@@ -16,21 +17,28 @@ pub enum Cmd {
     SetVolume(Kind, f32),
     SetMute(Kind, bool),
     SetAlert(u8),
+    SetLanguage(Language),
+    SetAutoUpdate(bool),
     ClearHistory,
 }
 
 /// Настройки, которые нужны и без окна (автозапуск в трей): хранятся в settings.json.
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct Settings {
     /// интервал автоопроса, мин; None — только вручную
     pub poll_minutes: Option<u64>,
     /// порог уведомления о низком заряде, %
     pub alert_percent: u8,
+    /// язык интерфейса; Auto — язык Windows
+    pub language: Language,
+    /// проверять обновления при открытии окна (единственный сетевой запрос приложения)
+    pub auto_update: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { poll_minutes: Some(15), alert_percent: 15 }
+        Settings { poll_minutes: Some(15), alert_percent: 15, language: Language::Auto, auto_update: true }
     }
 }
 
@@ -48,7 +56,10 @@ pub struct Battery {
 pub struct State {
     pub dongle: bool,
     pub battery: Option<Battery>,
+    /// код ошибки чтения (`hid::Error::code`): headset_off, dongle_missing, no_reply, hid_error:<текст>
     pub error: Option<String>,
+    /// язык, который реально показывается
+    pub lang: Lang,
     pub reading: bool,
     /// плановое чтение отложено: в наушниках играет звук
     pub deferred: bool,
@@ -148,8 +159,7 @@ fn ui_history(h: &[Sample]) -> Vec<(u64, u16)> {
     h.iter().filter(|s| s.at_ms >= cutoff).map(|s| (s.at_ms, s.mv)).collect()
 }
 
-fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
-       on_state: impl Fn(&State), on_alert: impl Fn(u8)) {
+fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store, on_state: impl Fn(&State), on_alert: impl Fn(u8)) {
     audio::init_com();
     let mut endpoints: [Option<Endpoint>; 2] = [None, None];
     let mut last_find = Instant::now() - Duration::from_secs(60);
@@ -177,7 +187,9 @@ fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
     };
     {
         // свежий замер с прошлого запуска (≤ 2 ч) показываем сразу, с его настоящим временем
-        estimate = history.last().filter(|s| now_ms() - s.at_ms < 2 * 3600 * 1000)
+        estimate = history
+            .last()
+            .filter(|s| now_ms() - s.at_ms < 2 * 3600 * 1000)
             .and_then(|_| battery::estimate(&history, None));
         // без свежего замера — прочитать сразу после старта
         if estimate.is_none() {
@@ -190,11 +202,16 @@ fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
         let st = settings.clone();
         update(&|s| {
             s.history = h.clone();
+            s.lang = st.language.resolve();
             s.settings = st.clone();
             if let (Some(e), Some(l)) = (&estimate, last) {
                 s.battery = Some(Battery {
-                    millivolts: l.mv, percent: e.percent, at_ms: l.at_ms, charging: e.charging,
-                    hours_left: e.hours_left, hours_source: e.hours_source,
+                    millivolts: l.mv,
+                    percent: e.percent,
+                    at_ms: l.at_ms,
+                    charging: e.charging,
+                    hours_left: e.hours_left,
+                    hours_source: e.hours_source,
                 });
             }
         });
@@ -221,6 +238,21 @@ fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
                 let st = settings.clone();
                 update(&|s| s.settings = st.clone());
             }
+            Ok(Cmd::SetLanguage(language)) => {
+                settings.language = language;
+                store.save_settings(&settings);
+                let st = settings.clone();
+                update(&|s| {
+                    s.lang = st.language.resolve();
+                    s.settings = st.clone();
+                });
+            }
+            Ok(Cmd::SetAutoUpdate(on)) => {
+                settings.auto_update = on;
+                store.save_settings(&settings);
+                let st = settings.clone();
+                update(&|s| s.settings = st.clone());
+            }
             Ok(Cmd::ClearHistory) => {
                 // оставляем последний замер: на нём держится текущая оценка
                 let keep = history.last().copied();
@@ -231,10 +263,14 @@ fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
                 update(&|s| s.history = h.clone());
             }
             Ok(Cmd::SetVolume(kind, v)) => {
-                if let Some(e) = &endpoints[kind as usize] { e.set_volume(v) }
+                if let Some(e) = &endpoints[kind as usize] {
+                    e.set_volume(v)
+                }
             }
             Ok(Cmd::SetMute(kind, m)) => {
-                if let Some(e) = &endpoints[kind as usize] { e.set_mute(m) }
+                if let Some(e) = &endpoints[kind as usize] {
+                    e.set_mute(m)
+                }
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
@@ -304,25 +340,25 @@ fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
         });
         let result = hid::read_battery();
         last_read = Some(Instant::now());
-        match &result {
-            Ok(mv) => {
-                history.push(Sample { at_ms: now_ms(), mv: *mv });
-                let cutoff = now_ms().saturating_sub(HISTORY_KEEP_MS);
-                history.retain(|s| s.at_ms >= cutoff);
-                store.save(&history);
-                estimate = battery::estimate(&history, estimate.as_ref());
-                if let Some(e) = &estimate {
-                    if e.charging || e.percent > settings.alert_percent + 5 {
-                        alerted.clear();
-                    } else if let Some(level) = [settings.alert_percent, ALERT_CRITICAL].into_iter()
-                        .filter(|&l| e.percent <= l && !alerted.contains(&l)).min() {
-                        // отмечаем этот и все более высокие уровни, чтобы не слать два подряд
-                        alerted.extend([settings.alert_percent, ALERT_CRITICAL].into_iter().filter(|&l| l >= level));
-                        on_alert(e.percent);
-                    }
+        if let Ok(mv) = &result {
+            history.push(Sample { at_ms: now_ms(), mv: *mv });
+            let cutoff = now_ms().saturating_sub(HISTORY_KEEP_MS);
+            history.retain(|s| s.at_ms >= cutoff);
+            store.save(&history);
+            estimate = battery::estimate(&history, estimate.as_ref());
+            if let Some(e) = &estimate {
+                if e.charging || e.percent > settings.alert_percent + 5 {
+                    alerted.clear();
+                } else if let Some(level) = [settings.alert_percent, ALERT_CRITICAL]
+                    .into_iter()
+                    .filter(|&l| e.percent <= l && !alerted.contains(&l))
+                    .min()
+                {
+                    // отмечаем этот и все более высокие уровни, чтобы не слать два подряд
+                    alerted.extend([settings.alert_percent, ALERT_CRITICAL].into_iter().filter(|&l| l >= level));
+                    on_alert(e.percent);
                 }
             }
-            Err(_) => {}
         }
         let at = now_ms();
         let ui_hist = ui_history(&history);
@@ -343,16 +379,17 @@ fn run(rx: Receiver<Cmd>, state: Arc<Mutex<State>>, store: Store,
                     s.error = None;
                     s.history = ui_hist.clone();
                 }
-                Err(e) => s.error = Some(e.to_string()),
+                Err(e) => s.error = Some(e.code()),
             }
         });
         // после ошибки — повтор через минуту; при низком заряде и на зарядке — чаще
         let fast = estimate.as_ref().is_some_and(|e| e.charging || e.percent <= 20);
-        next_battery = Instant::now() + match (&result, poll) {
-            (Err(_), Some(_)) => Duration::from_secs(60),
-            (_, Some(d)) if fast => d.min(Duration::from_secs(5 * 60)),
-            (_, Some(d)) => d,
-            (_, None) => NEVER,
-        };
+        next_battery = Instant::now()
+            + match (&result, poll) {
+                (Err(_), Some(_)) => Duration::from_secs(60),
+                (_, Some(d)) if fast => d.min(Duration::from_secs(5 * 60)),
+                (_, Some(d)) => d,
+                (_, None) => NEVER,
+            };
     }
 }
