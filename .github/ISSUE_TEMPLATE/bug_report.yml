@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work or shows a wrong value
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The more of the form you fill in, the faster it can be fixed.
+        This app was built and tested on one G435 with dongle `046D:0ACB`, so reports from other units are especially useful.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Plug in the dongle\n2. Switch the headset on\n3. ..."
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: In the app open Settings → Support → Copy, then paste it here. It holds versions, dongle state and the last readings, and no personal data.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: dongle
+    attributes:
+      label: Is your dongle 046D:0ACB?
+      description: Device Manager → your dongle → Details → Hardware Ids.
+      options:
+        - "Yes"
+        - "No"
+        - I don't know
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, the colour of the headset LED at the time, whether you were using the headset when it happened.

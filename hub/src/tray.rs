@@ -30,8 +30,15 @@ fn light_taskbar() -> bool {
     let mut value = 0u32;
     let mut size = 4u32;
     let status = unsafe {
-        RegGetValueW(HKEY_CURRENT_USER, w!(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"),
-            w!("SystemUsesLightTheme"), RRF_RT_REG_DWORD, None, Some(&mut value as *mut u32 as *mut _), Some(&mut size))
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"),
+            w!("SystemUsesLightTheme"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some(&mut value as *mut u32 as *mut _),
+            Some(&mut size),
+        )
     };
     status.is_ok() && value == 1
 }
@@ -109,40 +116,41 @@ pub fn render(state: &State) -> Image<'static> {
     Image::new_owned(c.0, SIZE as u32, SIZE as u32)
 }
 
-pub fn tooltip(state: &State) -> String {
-    if !state.dongle {
-        return "G435 Hub — донгл не подключён".into();
-    }
-    match (&state.battery, &state.error) {
-        (_, Some(e)) if e.contains("выключена") => "G435 Hub — гарнитура выключена".into(),
-        (Some(b), _) => {
-            let extra = if b.charging {
-                ", вероятно заряжается".to_string()
-            } else {
-                b.hours_left.map(|h| format!(", осталось ≈ {}", hours_text(h))).unwrap_or_default()
-            };
-            format!("G435 — {}%{extra} ({} мВ)", b.percent, b.millivolts)
-        }
-        (None, _) => "G435 Hub — заряд ещё не прочитан".into(),
-    }
-}
-
-pub fn hours_text(h: f32) -> String {
-    if h < 1.0 { format!("{} мин", (h * 60.0).round().max(5.0) as u32) } else { format!("{} ч", h.round() as u32) }
-}
+pub use crate::i18n::tooltip;
 
 /// Ключ того, что видно в трее: перерисовываем только при его изменении.
 pub fn key(state: &State) -> (bool, Option<u8>, bool) {
-    (state.dongle, state.battery.as_ref().filter(|_| state.dongle).map(|b| b.percent),
-     state.error.as_deref().is_some_and(|e| e.contains("выключена")))
+    (
+        state.dongle,
+        state.battery.as_ref().filter(|_| state.dongle).map(|b| b.percent),
+        state.error.as_deref() == Some("headset_off"),
+    )
 }
 
-pub fn setup(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Открыть G435 Hub", true, None::<&str>)?;
-    let refresh = MenuItem::with_id(app, "refresh", "Обновить заряд", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
+/// Пункты меню: хранятся, чтобы переименовать их при смене языка.
+pub struct Items {
+    open: MenuItem<tauri::Wry>,
+    refresh: MenuItem<tauri::Wry>,
+    quit: MenuItem<tauri::Wry>,
+}
+
+impl Items {
+    pub fn set_lang(&self, lang: crate::i18n::Lang) {
+        let (open, refresh, quit) = crate::i18n::menu(lang);
+        let _ = self.open.set_text(open);
+        let _ = self.refresh.set_text(refresh);
+        let _ = self.quit.set_text(quit);
+    }
+}
+
+pub fn setup(app: &AppHandle, lang: crate::i18n::Lang) -> tauri::Result<()> {
+    let (t_open, t_refresh, t_quit) = crate::i18n::menu(lang);
+    let open = MenuItem::with_id(app, "open", t_open, true, None::<&str>)?;
+    let refresh = MenuItem::with_id(app, "refresh", t_refresh, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", t_quit, true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&open, &refresh, &sep, &quit])?;
+    app.manage(Items { open, refresh, quit });
     TrayIconBuilder::with_id(ID)
         .icon(render(&State::default()))
         .tooltip("G435 Hub")
@@ -175,8 +183,14 @@ mod tests {
         for pct in [7u8, 25, 45, 100] {
             let s = State {
                 dongle: true,
-                battery: Some(Battery { millivolts: 3750, percent: pct, at_ms: 0, charging: false,
-                                        hours_left: Some(8.0), hours_source: None }),
+                battery: Some(Battery {
+                    millivolts: 3750,
+                    percent: pct,
+                    at_ms: 0,
+                    charging: false,
+                    hours_left: Some(8.0),
+                    hours_source: None,
+                }),
                 ..Default::default()
             };
             let img = render(&s);
@@ -185,6 +199,6 @@ mod tests {
                 std::fs::write(std::path::Path::new(d).join(format!("tray_{pct}.rgba")), img.rgba()).unwrap();
             }
         }
-        assert_eq!(tooltip(&State::default()), "G435 Hub — донгл не подключён");
+        assert_eq!(tooltip(&State::default()), "G435 Hub — dongle not connected");
     }
 }

@@ -34,13 +34,25 @@ pub enum Error {
     Win(windows::core::Error),
 }
 
+impl Error {
+    /// Stable code for the UI, which translates it: the text of the message is never matched.
+    pub fn code(&self) -> String {
+        match self {
+            Error::NotFound => "dongle_missing".into(),
+            Error::HeadsetOff => "headset_off".into(),
+            Error::NoReply => "no_reply".into(),
+            Error::Win(e) => format!("hid_error:{}", e.message()),
+        }
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Error::NotFound => write!(f, "донгл не найден"),
-            Error::HeadsetOff => write!(f, "гарнитура выключена"),
-            Error::NoReply => write!(f, "нет ответа от гарнитуры"),
-            Error::Win(e) => write!(f, "ошибка HID: {}", e.message()),
+            Error::NotFound => write!(f, "dongle not found"),
+            Error::HeadsetOff => write!(f, "headset is off"),
+            Error::NoReply => write!(f, "no reply from the headset"),
+            Error::Win(e) => write!(f, "HID error: {}", e.message()),
         }
     }
 }
@@ -59,10 +71,28 @@ pub fn millivolts_to_percent(mv: u16) -> u8 {
     // по разрядке нашей G435 в ночь на 2026-11-02 (простой без звука): время до самовыключения
     // на 3318 мВ в долях паспортных 18 ч. См. docs/battery.md.
     const CURVE: [(u16, u8); 22] = [
-        (4200, 100), (4150, 95), (4100, 90), (4050, 85), (4000, 80), (3950, 75),
-        (3900, 70), (3850, 62), (3800, 55), (3750, 41), (3720, 34), (3705, 29),
-        (3700, 27), (3690, 17), (3675, 11), (3650, 9), (3600, 7), (3550, 5),
-        (3500, 4), (3450, 2), (3400, 1), (3300, 0),
+        (4200, 100),
+        (4150, 95),
+        (4100, 90),
+        (4050, 85),
+        (4000, 80),
+        (3950, 75),
+        (3900, 70),
+        (3850, 62),
+        (3800, 55),
+        (3750, 41),
+        (3720, 34),
+        (3705, 29),
+        (3700, 27),
+        (3690, 17),
+        (3675, 11),
+        (3650, 9),
+        (3600, 7),
+        (3550, 5),
+        (3500, 4),
+        (3450, 2),
+        (3400, 1),
+        (3300, 0),
     ];
     if mv >= CURVE[0].0 {
         return 100;
@@ -96,15 +126,13 @@ fn parse_battery(buf: &[u8]) -> Option<u16> {
 fn find_vendor_path() -> Option<Vec<u16>> {
     unsafe {
         let guid = HidD_GetHidGuid();
-        let info = SetupDiGetClassDevsW(Some(&guid), PCWSTR::null(), None,
-            DIGCF_PRESENT | DIGCF_DEVICEINTERFACE).ok()?;
+        let info =
+            SetupDiGetClassDevsW(Some(&guid), PCWSTR::null(), None, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE).ok()?;
         let mut found = None;
         let mut index = 0;
         loop {
-            let mut iface = SP_DEVICE_INTERFACE_DATA {
-                cbSize: size_of::<SP_DEVICE_INTERFACE_DATA>() as u32,
-                ..Default::default()
-            };
+            let mut iface =
+                SP_DEVICE_INTERFACE_DATA { cbSize: size_of::<SP_DEVICE_INTERFACE_DATA>() as u32, ..Default::default() };
             if SetupDiEnumDeviceInterfaces(info, None, &guid, index, &mut iface).is_err() {
                 break;
             }
@@ -123,12 +151,20 @@ fn find_vendor_path() -> Option<Vec<u16>> {
             if !String::from_utf16_lossy(&path).to_lowercase().contains("vid_046d&pid_0acb") {
                 continue;
             }
-            let Ok(h) = CreateFileW(PCWSTR(path.as_ptr()), 0, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                None, OPEN_EXISTING, FILE_FLAGS_AND_ATTRIBUTES(0), None) else { continue };
+            let Ok(h) = CreateFileW(
+                PCWSTR(path.as_ptr()),
+                0,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                None,
+                OPEN_EXISTING,
+                FILE_FLAGS_AND_ATTRIBUTES(0),
+                None,
+            ) else {
+                continue;
+            };
             let mut ppd = PHIDP_PREPARSED_DATA::default();
             let mut caps = HIDP_CAPS::default();
-            let ok = HidD_GetPreparsedData(h, &mut ppd)
-                && HidP_GetCaps(ppd, &mut caps).is_ok();
+            let ok = HidD_GetPreparsedData(h, &mut ppd) && HidP_GetCaps(ppd, &mut caps).is_ok();
             if ok {
                 let _ = HidD_FreePreparsedData(ppd);
             }
@@ -162,8 +198,15 @@ impl Dongle {
     fn open() -> Result<Self> {
         let path = find_vendor_path().ok_or(Error::NotFound)?;
         unsafe {
-            let handle = CreateFileW(PCWSTR(path.as_ptr()), (GENERIC_READ | GENERIC_WRITE).0,
-                FILE_SHARE_READ | FILE_SHARE_WRITE, None, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, None)?;
+            let handle = CreateFileW(
+                PCWSTR(path.as_ptr()),
+                (GENERIC_READ | GENERIC_WRITE).0,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                None,
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                None,
+            )?;
             let event = CreateEventW(None, true, false, PCWSTR::null())?;
             Ok(Dongle { handle, event, seq: 1 })
         }
@@ -202,10 +245,10 @@ impl Dongle {
         }
         let deadline = Instant::now() + Duration::from_millis(800);
         while Instant::now() < deadline {
-            if let Some(buf) = self.read_input(100) {
-                if buf[0] == REPORT_ID {
-                    return Ok(buf[1]);
-                }
+            if let Some(buf) = self.read_input(100)
+                && buf[0] == REPORT_ID
+            {
+                return Ok(buf[1]);
             }
         }
         Err(Error::NoReply)
@@ -231,8 +274,13 @@ impl Dongle {
         Ok(())
     }
 
-    fn query<T>(&mut self, category: u8, len: u8, payload: &[u8],
-                parse: impl Fn(&[u8]) -> Option<T>) -> Result<Option<T>> {
+    fn query<T>(
+        &mut self,
+        category: u8,
+        len: u8,
+        payload: &[u8],
+        parse: impl Fn(&[u8]) -> Option<T>,
+    ) -> Result<Option<T>> {
         let mut cmd = vec![0x50, 0x41, category, self.seq, len];
         cmd.extend_from_slice(payload);
         self.seq = self.seq % 127 + 1;

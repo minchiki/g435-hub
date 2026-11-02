@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,68 +19,68 @@
     <svg class="logo" viewBox="0 0 124 32" aria-hidden="true" data-tauri-drag-region><use href="#logo-full"/></svg>
   </span>
   <div class="titlebar__controls">
-    <button class="win-btn" id="btn-min" aria-label="Свернуть" title="Свернуть"><svg class="icon"><use href="icons.svg#i-minus"/></svg></button>
-    <button class="win-btn win-btn--close" id="btn-close" aria-label="Закрыть в трей" title="Закрыть. Заряд останется в трее"><svg class="icon"><use href="icons.svg#i-x"/></svg></button>
+    <button class="win-btn" id="btn-min" data-i18n-attr="aria-label:win.minimize;title:win.minimize" aria-label="Minimize" title="Minimize"><svg class="icon"><use href="icons.svg#i-minus"/></svg></button>
+    <button class="win-btn win-btn--close" id="btn-close" data-i18n-attr="aria-label:win.close;title:win.close.title" aria-label="Close to tray" title="Close. The battery stays in the tray"><svg class="icon"><use href="icons.svg#i-x"/></svg></button>
   </div>
 </header>
 
 <div class="shell">
-  <nav class="sidebar" aria-label="Разделы">
+  <nav class="sidebar" data-i18n-attr="aria-label:nav.label" aria-label="Sections">
     <div class="device" id="device">
       <p class="device__name">G435 LIGHTSPEED</p>
-      <p class="device__status"><span class="dot" id="dev-dot"></span><span id="dev-status">Поиск донгла…</span></p>
+      <p class="device__status"><span class="dot" id="dev-dot"></span><span id="dev-status" data-i18n="dev.searching">Looking for the dongle…</span></p>
       <p class="device__battery num" id="dev-battery"></p>
     </div>
     <ul class="nav">
-      <li><a class="nav__item" href="#overview" data-route="overview"><svg class="icon"><use href="icons.svg#i-house"/></svg>Обзор</a></li>
-      <li><a class="nav__item" href="#power" data-route="power"><svg class="icon"><use href="icons.svg#i-battery"/></svg>Питание</a></li>
-      <li><a class="nav__item" href="#sound" data-route="sound"><svg class="icon"><use href="icons.svg#i-headphones"/></svg>Звук</a></li>
-      <li><a class="nav__item" href="#look" data-route="look"><svg class="icon"><use href="icons.svg#i-palette"/></svg>Внешний вид</a></li>
-      <li><a class="nav__item" href="#controls" data-route="controls"><svg class="icon"><use href="icons.svg#i-keyboard"/></svg>Управление</a></li>
+      <li><a class="nav__item" href="#overview" data-route="overview"><svg class="icon"><use href="icons.svg#i-house"/></svg><span data-i18n="nav.overview">Overview</span></a></li>
+      <li><a class="nav__item" href="#power" data-route="power"><svg class="icon"><use href="icons.svg#i-battery"/></svg><span data-i18n="nav.power">Power</span></a></li>
+      <li><a class="nav__item" href="#sound" data-route="sound"><svg class="icon"><use href="icons.svg#i-headphones"/></svg><span data-i18n="nav.sound">Sound</span></a></li>
+      <li><a class="nav__item" href="#look" data-route="look"><svg class="icon"><use href="icons.svg#i-palette"/></svg><span data-i18n="nav.look">Appearance</span></a></li>
+      <li><a class="nav__item" href="#controls" data-route="controls"><svg class="icon"><use href="icons.svg#i-keyboard"/></svg><span data-i18n="nav.controls">Controls</span></a></li>
     </ul>
     <ul class="nav nav--bottom">
-      <li><a class="nav__item" href="#settings" data-route="settings"><svg class="icon"><use href="icons.svg#i-settings"/></svg>Настройки</a></li>
+      <li><a class="nav__item" href="#settings" data-route="settings"><svg class="icon"><use href="icons.svg#i-settings"/></svg><span data-i18n="nav.settings">Settings</span></a></li>
     </ul>
   </nav>
 
   <main class="main" id="main">
-    <!-- ===================== Обзор ===================== -->
+    <!-- ===================== Overview ===================== -->
     <section class="page page--wide" data-page="overview" aria-labelledby="h-overview">
       <header class="page__head">
         <div>
           <h1 class="t-h1" id="h-overview">G435</h1>
-          <p class="page__lead">Беспроводная гарнитура LIGHTSPEED</p>
+          <p class="page__lead" data-i18n="ov.lead">LIGHTSPEED wireless headset</p>
         </div>
-        <span class="badge" id="ov-badge">Поиск донгла…</span>
+        <span class="badge" id="ov-badge">Looking for the dongle…</span>
       </header>
       <div class="stage" data-stage>
         <div class="stage__empty" id="ov-empty" hidden></div>
       </div>
       <dl class="stats" id="ov-stats">
         <div class="stat">
-          <dt>Заряд</dt>
+          <dt data-i18n="stat.charge">Charge</dt>
           <dd class="stat__value num" id="ov-pct"><span class="skeleton" style="width:72px;height:32px"></span></dd>
           <dd class="stat__meta num" id="ov-mv"></dd>
         </div>
         <div class="stat">
-          <dt>Осталось</dt>
+          <dt data-i18n="stat.left">Time left</dt>
           <dd class="stat__value num" id="ov-left"><span class="skeleton" style="width:64px;height:32px"></span></dd>
           <dd class="stat__meta" id="ov-left-src"></dd>
         </div>
         <div class="stat">
-          <dt>Громкость</dt>
+          <dt data-i18n="stat.volume">Volume</dt>
           <dd class="stat__value num" id="ov-vol">—</dd>
-          <dd class="stat__meta"><input class="slider" type="range" min="0" max="100" id="ov-vol-range" aria-label="Громкость наушников"></dd>
+          <dd class="stat__meta"><input class="slider" type="range" min="0" max="100" id="ov-vol-range" data-i18n-attr="aria-label:stat.volume.aria" aria-label="Headphone volume"></dd>
         </div>
       </dl>
     </section>
 
-    <!-- ===================== Питание ===================== -->
+    <!-- ===================== Power ===================== -->
     <section class="page" data-page="power" aria-labelledby="h-power">
       <header class="page__head">
         <div>
-          <h1 class="t-h2" id="h-power">Питание</h1>
-          <p class="page__lead">Гарнитура сообщает только напряжение, процент — оценка по кривой разрядки.</p>
+          <h1 class="t-h2" id="h-power" data-i18n="pw.title">Power</h1>
+          <p class="page__lead" data-i18n="pw.lead">The headset reports only its voltage; the percentage is an estimate from the discharge curve.</p>
         </div>
       </header>
       <div id="power-empty" hidden></div>
@@ -91,17 +91,17 @@
             <p class="reading__meta num" id="pw-meta"></p>
           </div>
           <div class="reading__aside">
-            <span class="badge badge--accent" id="pw-charging" hidden>Заряжается</span>
-            <button class="btn btn--primary" id="btn-refresh"><svg class="icon"><use href="icons.svg#i-refresh-cw"/></svg>Обновить заряд</button>
+            <span class="badge badge--accent" id="pw-charging" data-i18n="pw.charging" hidden>Charging</span>
+            <button class="btn btn--primary" id="btn-refresh"><svg class="icon"><use href="icons.svg#i-refresh-cw"/></svg><span data-i18n="pw.refresh">Refresh battery</span></button>
           </div>
         </div>
         <div class="notice notice--warning" id="pw-off" hidden>
           <svg class="icon"><use href="icons.svg#i-power"/></svg>
-          <p>Гарнитура выключена — показан последний замер. Включите её, и заряд обновится сам.</p>
+          <p data-i18n="pw.off">The headset is off, so the last reading is shown. Switch it on and the charge updates by itself.</p>
         </div>
         <div class="notice" id="pw-deferred" hidden>
           <svg class="icon"><use href="icons.svg#i-clock"/></svg>
-          <p>В наушниках играет звук — плановое чтение ждёт паузы, но не дольше 30 минут. Кнопка «Обновить заряд» читает сразу.</p>
+          <p data-i18n="pw.deferred">Audio is playing, so the scheduled read waits for a pause (30 minutes at most). “Refresh battery” reads right away.</p>
         </div>
         <div class="notice notice--error" id="pw-error" hidden>
           <svg class="icon"><use href="icons.svg#i-circle-alert"/></svg>
@@ -110,7 +110,7 @@
 
         <figure class="chart card" id="chart">
           <figcaption class="chart__head">
-            <span class="chart__title" id="chart-title">Заряд за сутки</span>
+            <span class="chart__title" id="chart-title">Battery over the last 24 hours</span>
             <span class="chart__legend num" id="chart-range"></span>
           </figcaption>
           <div class="chart__plot" id="chart-plot">
@@ -118,26 +118,26 @@
             <div class="chart__tip" id="chart-tip" hidden><strong class="num" id="tip-value"></strong><span class="num" id="tip-time"></span></div>
           </div>
           <div class="chart__empty" id="chart-empty" hidden>
-            <p class="t-small">График появится после второго замера. По умолчанию заряд читается раз в 15 минут.</p>
+            <p class="t-small" data-i18n="chart.empty">The chart appears after the second reading. By default the battery is read every 15 minutes.</p>
           </div>
-          <table class="sr-only" id="chart-table"><caption>Замеры заряда</caption><thead><tr><th>Время</th><th>Заряд</th><th>Напряжение</th></tr></thead><tbody></tbody></table>
+          <table class="sr-only" id="chart-table"><caption data-i18n="chart.caption">Battery readings</caption><thead><tr><th data-i18n="chart.time">Time</th><th data-i18n="chart.charge">Charge</th><th data-i18n="chart.voltage">Voltage</th></tr></thead><tbody></tbody></table>
         </figure>
 
         <dl class="rows">
           <div class="row">
-            <dt>Осталось<span class="row__hint" id="pw-left-src">Оценка появится после первого замера</span></dt>
+            <dt><span data-i18n="pw.left">Time left</span><span class="row__hint" id="pw-left-src">The estimate appears after the first reading</span></dt>
             <dd class="num" id="pw-left">—</dd>
           </div>
           <div class="row">
-            <dt>Автоопрос<span class="row__hint">Если звука нет больше 20 минут — раз в час, чтобы гарнитура могла выключиться</span></dt>
+            <dt><span data-i18n="pw.poll">Auto-refresh</span><span class="row__hint" data-i18n="pw.poll.hint">After 20 minutes without audio it reads once an hour, so the headset can switch itself off</span></dt>
             <dd>
               <div class="dropdown" id="poll">
-                <button class="btn dropdown__trigger" aria-haspopup="listbox" aria-expanded="false"><span>Каждые 15 минут</span><svg class="icon"><use href="icons.svg#i-chevron-down"/></svg></button>
+                <button class="btn dropdown__trigger" aria-haspopup="listbox" aria-expanded="false"><span>Every 15 minutes</span><svg class="icon"><use href="icons.svg#i-chevron-down"/></svg></button>
                 <ul class="menu menu--right" role="listbox" tabindex="-1">
-                  <li class="menu__item" role="option" data-value="5">Каждые 5 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
-                  <li class="menu__item" role="option" data-value="15">Каждые 15 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
-                  <li class="menu__item" role="option" data-value="30">Каждые 30 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
-                  <li class="menu__item" role="option" data-value="0">Только вручную<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="5"><span data-i18n="poll.5">Every 5 minutes</span><svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="15"><span data-i18n="poll.15">Every 15 minutes</span><svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="30"><span data-i18n="poll.30">Every 30 minutes</span><svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="0"><span data-i18n="poll.0">Manually only</span><svg class="icon"><use href="icons.svg#i-check"/></svg></li>
                 </ul>
               </div>
             </dd>
@@ -146,124 +146,158 @@
       </div>
     </section>
 
-    <!-- ===================== Звук ===================== -->
+    <!-- ===================== Sound ===================== -->
     <section class="page" data-page="sound" aria-labelledby="h-sound">
       <header class="page__head">
         <div>
-          <h1 class="t-h2" id="h-sound">Звук</h1>
-          <p class="page__lead">Громкость устройств G435 в Windows. Кнопки на чашке меняют её же.</p>
+          <h1 class="t-h2" id="h-sound" data-i18n="snd.title">Sound</h1>
+          <p class="page__lead" data-i18n="snd.lead">Volume of the G435 devices in Windows. The buttons on the ear cup change the same level.</p>
         </div>
       </header>
       <section class="group" aria-labelledby="h-hp">
-        <h2 class="group__title" id="h-hp">Наушники</h2>
+        <h2 class="group__title" id="h-hp" data-i18n="snd.hp">Headphones</h2>
         <div class="level card" id="lv-headphones">
-          <div class="level__head"><span class="level__label">Громкость</span><output class="level__value num" id="v-headphones">—</output></div>
+          <div class="level__head"><span class="level__label" data-i18n="snd.volume">Volume</span><output class="level__value num" id="v-headphones">—</output></div>
           <div class="level__body">
-            <input class="slider" type="range" min="0" max="100" id="r-headphones" aria-label="Громкость наушников">
-            <button class="btn btn--icon" id="m-headphones" aria-pressed="false" aria-label="Выключить звук"><svg class="icon"><use href="icons.svg#i-volume-2"/></svg></button>
+            <input class="slider" type="range" min="0" max="100" id="r-headphones" data-i18n-attr="aria-label:snd.hp.aria" aria-label="Headphone volume">
+            <button class="btn btn--icon" id="m-headphones" aria-pressed="false" aria-label="Mute"><svg class="icon"><use href="icons.svg#i-volume-2"/></svg></button>
           </div>
         </div>
       </section>
       <section class="group" aria-labelledby="h-mic">
-        <h2 class="group__title" id="h-mic">Микрофон</h2>
+        <h2 class="group__title" id="h-mic" data-i18n="snd.mic">Microphone</h2>
         <div class="level card" id="lv-microphone">
-          <div class="level__head"><span class="level__label">Уровень записи</span><output class="level__value num" id="v-microphone">—</output></div>
+          <div class="level__head"><span class="level__label" data-i18n="snd.rec">Recording level</span><output class="level__value num" id="v-microphone">—</output></div>
           <div class="level__body">
-            <input class="slider" type="range" min="0" max="100" id="r-microphone" aria-label="Уровень микрофона">
-            <button class="btn btn--icon" id="m-microphone" aria-pressed="false" aria-label="Выключить микрофон"><svg class="icon"><use href="icons.svg#i-mic"/></svg></button>
+            <input class="slider" type="range" min="0" max="100" id="r-microphone" data-i18n-attr="aria-label:snd.mic.aria" aria-label="Microphone level">
+            <button class="btn btn--icon" id="m-microphone" aria-pressed="false" aria-label="Mute"><svg class="icon"><use href="icons.svg#i-mic"/></svg></button>
           </div>
         </div>
-        <p class="group__note">Кнопка mute на гарнитуре глушит микрофон внутри неё и не сообщает об этом компьютеру, поэтому её состояние здесь не видно.</p>
+        <p class="group__note" data-i18n="snd.note">The mute button on the headset silences the microphone inside it and does not tell the computer, so its state is not visible here.</p>
       </section>
     </section>
 
-    <!-- ===================== Внешний вид ===================== -->
+    <!-- ===================== Appearance ===================== -->
     <section class="page page--wide" data-page="look" aria-labelledby="h-look">
       <header class="page__head">
         <div>
-          <h1 class="t-h2" id="h-look">Внешний вид</h1>
-          <p class="page__lead">Цвет модели в приложении. На гарнитуру не влияет.</p>
+          <h1 class="t-h2" id="h-look" data-i18n="look.title">Appearance</h1>
+          <p class="page__lead" data-i18n="look.lead">The model colour in the app. The headset itself is not changed.</p>
         </div>
       </header>
       <div class="stage stage--short" data-stage></div>
-      <div class="swatches" role="radiogroup" aria-label="Расцветка" id="swatches"></div>
+      <div class="swatches" role="radiogroup" data-i18n-attr="aria-label:look.aria" aria-label="Colourway" id="swatches"></div>
     </section>
 
-    <!-- ===================== Управление ===================== -->
+    <!-- ===================== Controls ===================== -->
     <section class="page" data-page="controls" aria-labelledby="h-controls">
       <header class="page__head">
         <div>
-          <h1 class="t-h2" id="h-controls">Управление</h1>
-          <p class="page__lead">Эти функции живут в прошивке и настраиваются только кнопками на гарнитуре.</p>
+          <h1 class="t-h2" id="h-controls" data-i18n="ctl.title">Controls</h1>
+          <p class="page__lead" data-i18n="ctl.lead">These features live in the headset firmware and are set only with its buttons.</p>
         </div>
       </header>
       <dl class="rows combos">
-        <div class="row"><dt><kbd>Питание</kbd></dt><dd>Коротко — цвет индикатора показывает заряд: зелёный <span class="nowrap">31–100%</span>, красный <span class="nowrap">15–30%</span>, мигающий красный — меньше 15%.</dd></div>
-        <div class="row"><dt><kbd>Mute</kbd><kbd>×2</kbd></dt><dd>Включить или выключить самопрослушивание.</dd></div>
-        <div class="row"><dt><kbd>Mute</kbd><kbd>Vol ±</kbd></dt><dd>Громкость самопрослушивания.</dd></div>
-        <div class="row"><dt><kbd>Mute</kbd><kbd>Vol ±</kbd><kbd>3 с</kbd></dt><dd>Ограничитель громкости: 85 или 100 дБ.</dd></div>
+        <div class="row"><dt><kbd data-i18n="ctl.power">Power</kbd></dt><dd data-i18n-html="ctl.power.text"></dd></div>
+        <div class="row"><dt><kbd>Mute</kbd><kbd>×2</kbd></dt><dd data-i18n="ctl.mute2.text">Turn sidetone on or off.</dd></div>
+        <div class="row"><dt><kbd>Mute</kbd><kbd>Vol ±</kbd></dt><dd data-i18n="ctl.mutevol.text">Sidetone volume.</dd></div>
+        <div class="row"><dt><kbd>Mute</kbd><kbd>Vol ±</kbd><kbd data-i18n="ctl.3s">3 s</kbd></dt><dd data-i18n="ctl.limit.text">Volume limiter: 85 or 100 dB.</dd></div>
       </dl>
-      <p class="group__note">Без активности гарнитура выключается сама через 30 минут.</p>
+      <p class="group__note" data-i18n="ctl.note">With no activity the headset switches itself off after 30 minutes.</p>
     </section>
 
-    <!-- ===================== Настройки ===================== -->
+    <!-- ===================== Settings ===================== -->
     <section class="page" data-page="settings" aria-labelledby="h-settings">
       <header class="page__head">
         <div>
-          <h1 class="t-h2" id="h-settings">Настройки</h1>
-          <p class="page__lead">Хаб работает в трее, даже когда окно закрыто.</p>
+          <h1 class="t-h2" id="h-settings" data-i18n="set.title">Settings</h1>
+          <p class="page__lead" data-i18n="set.lead">The hub keeps running in the tray when the window is closed.</p>
         </div>
       </header>
       <section class="group" aria-labelledby="h-general">
-        <h2 class="group__title" id="h-general">Общие</h2>
+        <h2 class="group__title" id="h-general" data-i18n="set.general">General</h2>
         <dl class="rows">
           <div class="row">
-            <dt>Тема</dt>
-            <dd><div class="segmented" role="radiogroup" aria-label="Тема" id="theme">
-              <button role="radio" data-theme-value="system"><svg class="icon"><use href="icons.svg#i-monitor"/></svg>Система</button>
-              <button role="radio" data-theme-value="light"><svg class="icon"><use href="icons.svg#i-sun"/></svg>Светлая</button>
-              <button role="radio" data-theme-value="dark"><svg class="icon"><use href="icons.svg#i-moon"/></svg>Тёмная</button>
+            <dt data-i18n="set.theme">Theme</dt>
+            <dd><div class="segmented" role="radiogroup" data-i18n-attr="aria-label:set.theme" aria-label="Theme" id="theme">
+              <button role="radio" data-theme-value="system"><svg class="icon"><use href="icons.svg#i-monitor"/></svg><span data-i18n="theme.system">System</span></button>
+              <button role="radio" data-theme-value="light"><svg class="icon"><use href="icons.svg#i-sun"/></svg><span data-i18n="theme.light">Light</span></button>
+              <button role="radio" data-theme-value="dark"><svg class="icon"><use href="icons.svg#i-moon"/></svg><span data-i18n="theme.dark">Dark</span></button>
             </div></dd>
           </div>
           <div class="row">
-            <dt id="l-autostart">Запускать вместе с Windows<span class="row__hint">Сразу в трей, без окна</span></dt>
+            <dt id="l-language" data-i18n="set.lang">Language</dt>
+            <dd><div class="segmented" role="radiogroup" data-i18n-attr="aria-label:set.lang" aria-label="Language" id="language">
+              <button role="radio" data-language-value="auto"><svg class="icon"><use href="icons.svg#i-monitor"/></svg><span data-i18n="lang.auto">System</span></button>
+              <button role="radio" data-language-value="en">English</button>
+              <button role="radio" data-language-value="ru">Русский</button>
+            </div></dd>
+          </div>
+          <div class="row">
+            <dt id="l-autostart"><span data-i18n="set.autostart">Start with Windows</span><span class="row__hint" data-i18n="set.autostart.hint">Straight to the tray, no window</span></dt>
             <dd><button class="switch" role="switch" aria-checked="false" aria-labelledby="l-autostart" id="autostart"></button></dd>
           </div>
         </dl>
       </section>
       <section class="group" aria-labelledby="h-alerts">
-        <h2 class="group__title" id="h-alerts">Уведомления</h2>
+        <h2 class="group__title" id="h-alerts" data-i18n="set.notifications">Notifications</h2>
         <dl class="rows">
           <div class="row">
-            <dt>Предупреждать о низком заряде<span class="row__hint">Ещё одно уведомление придёт при 5%</span></dt>
+            <dt><span data-i18n="set.alert">Warn about low battery</span><span class="row__hint" data-i18n="set.alert.hint">One more notification arrives at 5%</span></dt>
             <dd>
               <label class="field field--suffix field--inline" id="alert-field">
-                <span class="sr-only">Порог, процентов</span>
+                <span class="sr-only" data-i18n="set.alert.sr">Threshold, percent</span>
                 <span class="field__control"><input class="input" id="alert" inputmode="numeric" maxlength="2" value="15"><span class="field__suffix">%</span></span>
-                <span class="field__hint" id="alert-hint" hidden>От 5 до 50</span>
+                <span class="field__hint" id="alert-hint" data-i18n="set.alert.invalid" hidden>From 5 to 50</span>
               </label>
             </dd>
           </div>
         </dl>
       </section>
       <section class="group" aria-labelledby="h-data">
-        <h2 class="group__title" id="h-data">Данные</h2>
+        <h2 class="group__title" id="h-data" data-i18n="set.data">Data</h2>
         <dl class="rows">
           <div class="row">
-            <dt>История заряда<span class="row__hint num" id="hist-count">Хранится 7 дней на этом компьютере</span></dt>
-            <dd><button class="btn btn--danger" id="btn-clear">Очистить</button></dd>
+            <dt><span data-i18n="set.history">Battery history</span><span class="row__hint num" id="hist-count">Kept for 7 days on this computer</span></dt>
+            <dd><button class="btn btn--danger" id="btn-clear" data-i18n="set.clear">Clear</button></dd>
+          </div>
+        </dl>
+      </section>
+      <section class="group" aria-labelledby="h-updates">
+        <h2 class="group__title" id="h-updates" data-i18n="set.updates">Updates</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt id="l-autoupdate"><span data-i18n="set.autoupdate">Check automatically</span><span class="row__hint" data-i18n="set.autoupdate.hint">When the window opens. This is the only time the app uses the network: it asks github.com for the latest version number.</span></dt>
+            <dd><button class="switch" role="switch" aria-checked="true" aria-labelledby="l-autoupdate" id="autoupdate"></button></dd>
+          </div>
+          <div class="row">
+            <dt><span data-i18n="upd.title">Check for updates</span><span class="row__hint" id="upd-status" role="status"></span></dt>
+            <dd><button class="btn" id="btn-update" data-i18n="upd.check">Check now</button></dd>
+          </div>
+        </dl>
+      </section>
+      <section class="group" aria-labelledby="h-support">
+        <h2 class="group__title" id="h-support" data-i18n="set.support">Support</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt><span data-i18n="set.diag">Diagnostics</span><span class="row__hint" data-i18n="set.diag.hint">Versions and the last readings, no personal data. Paste it into a bug report.</span></dt>
+            <dd><button class="btn" id="btn-diag" data-i18n="set.diag.copy">Copy</button></dd>
+          </div>
+          <div class="row">
+            <dt><span data-i18n="set.issue">Report a problem</span><span class="row__hint" data-i18n="set.issue.hint">Opens GitHub in your browser</span></dt>
+            <dd><a class="btn" id="btn-issue" href="https://github.com/minchiki/g435-hub/issues/new/choose" target="_blank" rel="noopener" data-i18n="set.issue.open">Open</a></dd>
           </div>
         </dl>
       </section>
       <section class="group" aria-labelledby="h-about">
-        <h2 class="group__title" id="h-about">О программе</h2>
+        <h2 class="group__title" id="h-about" data-i18n="set.about">About</h2>
         <dl class="rows about">
-          <div class="row"><dt>Версия</dt><dd class="num">0.3.0 · донгл 046D:0ACB</dd></div>
-          <div class="row"><dt>Протокол батареи</dt><dd><a href="https://github.com/deddroid/logitech-g435-battery" target="_blank" rel="noopener">deddroid/logitech-g435-battery</a>, MIT</dd></div>
-          <div class="row"><dt>3D-модель</dt><dd><a href="https://sketchfab.com/3d-models/fone-logitech-g435-d4cc71d02f6f40a48441f9045fe4e1ae" target="_blank" rel="noopener">Fone Logitech G435</a> — VagnerZNMods, CC-BY-4.0</dd></div>
-          <div class="row"><dt>Шрифт и иконки</dt><dd>Geist (OFL), Lucide (ISC)</dd></div>
+          <div class="row"><dt data-i18n="about.version">Version</dt><dd class="num"><span id="about-version"></span> · dongle 046D:0ACB</dd></div>
+          <div class="row"><dt data-i18n="about.protocol">Battery protocol</dt><dd><a href="https://github.com/deddroid/logitech-g435-battery" target="_blank" rel="noopener">deddroid/logitech-g435-battery</a>, MIT</dd></div>
+          <div class="row"><dt data-i18n="about.model">3D model</dt><dd><a href="https://sketchfab.com/3d-models/fone-logitech-g435-d4cc71d02f6f40a48441f9045fe4e1ae" target="_blank" rel="noopener">Fone Logitech G435</a> — VagnerZNMods, CC-BY-4.0</dd></div>
+          <div class="row"><dt data-i18n="about.fonts">Font and icons</dt><dd>Geist (OFL), Lucide (ISC)</dd></div>
         </dl>
-        <p class="group__note">Неофициальная программа, не связана с Logitech.</p>
+        <p class="group__note" data-i18n="about.note">Unofficial program, not affiliated with Logitech.</p>
       </section>
     </section>
   </main>
@@ -272,12 +306,12 @@
 <dialog class="modal" id="modal-clear" aria-labelledby="mc-title">
   <form method="dialog">
     <div class="modal__body">
-      <h3 class="modal__title" id="mc-title">Очистить историю заряда?</h3>
-      <p class="modal__text">График и оценка «осталось» начнут считаться заново. Текущий заряд не изменится.</p>
+      <h3 class="modal__title" id="mc-title" data-i18n="modal.clear.title">Clear the battery history?</h3>
+      <p class="modal__text" data-i18n="modal.clear.text">The chart and the “time left” estimate start over. The current charge does not change.</p>
     </div>
     <div class="modal__footer">
-      <button class="btn btn--ghost" value="cancel">Отмена</button>
-      <button class="btn btn--danger" value="confirm" id="mc-confirm">Очистить</button>
+      <button class="btn btn--ghost" value="cancel" data-i18n="modal.cancel">Cancel</button>
+      <button class="btn btn--danger" value="confirm" id="mc-confirm" data-i18n="set.clear">Clear</button>
     </div>
   </form>
 </dialog>
