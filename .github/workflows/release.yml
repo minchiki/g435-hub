@@ -88,7 +88,7 @@ jobs:
           pwsh -NoProfile -File packaging/make-manifests.ps1 -Version $v -Repo ${{ github.repository }} -Sums out/SHA256SUMS.txt -Out packaging-out
           Get-ChildItem out, packaging-out -Recurse -File | Format-Table FullName, Length
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-x64
           path: |
