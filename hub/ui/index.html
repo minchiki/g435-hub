@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G435 Hub</title>
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="app.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<header class="titlebar" data-tauri-drag-region>
+  <span class="titlebar__logo" data-tauri-drag-region aria-label="G435 Hub">
+    <svg class="logo" viewBox="0 0 124 32" aria-hidden="true" data-tauri-drag-region><use href="#logo-full"/></svg>
+  </span>
+  <div class="titlebar__controls">
+    <button class="win-btn" id="btn-min" aria-label="Свернуть" title="Свернуть"><svg class="icon"><use href="icons.svg#i-minus"/></svg></button>
+    <button class="win-btn win-btn--close" id="btn-close" aria-label="Закрыть в трей" title="Закрыть. Заряд останется в трее"><svg class="icon"><use href="icons.svg#i-x"/></svg></button>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="sidebar" aria-label="Разделы">
+    <div class="device" id="device">
+      <p class="device__name">G435 LIGHTSPEED</p>
+      <p class="device__status"><span class="dot" id="dev-dot"></span><span id="dev-status">Поиск донгла…</span></p>
+      <p class="device__battery num" id="dev-battery"></p>
+    </div>
+    <ul class="nav">
+      <li><a class="nav__item" href="#overview" data-route="overview"><svg class="icon"><use href="icons.svg#i-house"/></svg>Обзор</a></li>
+      <li><a class="nav__item" href="#power" data-route="power"><svg class="icon"><use href="icons.svg#i-battery"/></svg>Питание</a></li>
+      <li><a class="nav__item" href="#sound" data-route="sound"><svg class="icon"><use href="icons.svg#i-headphones"/></svg>Звук</a></li>
+      <li><a class="nav__item" href="#look" data-route="look"><svg class="icon"><use href="icons.svg#i-palette"/></svg>Внешний вид</a></li>
+      <li><a class="nav__item" href="#controls" data-route="controls"><svg class="icon"><use href="icons.svg#i-keyboard"/></svg>Управление</a></li>
+    </ul>
+    <ul class="nav nav--bottom">
+      <li><a class="nav__item" href="#settings" data-route="settings"><svg class="icon"><use href="icons.svg#i-settings"/></svg>Настройки</a></li>
+    </ul>
+  </nav>
+
+  <main class="main" id="main">
+    <!-- ===================== Обзор ===================== -->
+    <section class="page page--wide" data-page="overview" aria-labelledby="h-overview">
+      <header class="page__head">
+        <div>
+          <h1 class="t-h1" id="h-overview">G435</h1>
+          <p class="page__lead">Беспроводная гарнитура LIGHTSPEED</p>
+        </div>
+        <span class="badge" id="ov-badge">Поиск донгла…</span>
+      </header>
+      <div class="stage" data-stage>
+        <div class="stage__empty" id="ov-empty" hidden></div>
+      </div>
+      <dl class="stats" id="ov-stats">
+        <div class="stat">
+          <dt>Заряд</dt>
+          <dd class="stat__value num" id="ov-pct"><span class="skeleton" style="width:72px;height:32px"></span></dd>
+          <dd class="stat__meta num" id="ov-mv"></dd>
+        </div>
+        <div class="stat">
+          <dt>Осталось</dt>
+          <dd class="stat__value num" id="ov-left"><span class="skeleton" style="width:64px;height:32px"></span></dd>
+          <dd class="stat__meta" id="ov-left-src"></dd>
+        </div>
+        <div class="stat">
+          <dt>Громкость</dt>
+          <dd class="stat__value num" id="ov-vol">—</dd>
+          <dd class="stat__meta"><input class="slider" type="range" min="0" max="100" id="ov-vol-range" aria-label="Громкость наушников"></dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- ===================== Питание ===================== -->
+    <section class="page" data-page="power" aria-labelledby="h-power">
+      <header class="page__head">
+        <div>
+          <h1 class="t-h2" id="h-power">Питание</h1>
+          <p class="page__lead">Гарнитура сообщает только напряжение, процент — оценка по кривой разрядки.</p>
+        </div>
+      </header>
+      <div id="power-empty" hidden></div>
+      <div id="power-body">
+        <div class="reading">
+          <div>
+            <p class="reading__value num"><span id="pw-pct"><span class="skeleton" style="width:120px;height:48px"></span></span><span class="reading__unit">%</span></p>
+            <p class="reading__meta num" id="pw-meta"></p>
+          </div>
+          <div class="reading__aside">
+            <span class="badge badge--accent" id="pw-charging" hidden>Заряжается</span>
+            <button class="btn btn--primary" id="btn-refresh"><svg class="icon"><use href="icons.svg#i-refresh-cw"/></svg>Обновить заряд</button>
+          </div>
+        </div>
+        <div class="notice notice--warning" id="pw-off" hidden>
+          <svg class="icon"><use href="icons.svg#i-power"/></svg>
+          <p>Гарнитура выключена — показан последний замер. Включите её, и заряд обновится сам.</p>
+        </div>
+        <div class="notice" id="pw-deferred" hidden>
+          <svg class="icon"><use href="icons.svg#i-clock"/></svg>
+          <p>В наушниках играет звук — плановое чтение ждёт паузы, но не дольше 30 минут. Кнопка «Обновить заряд» читает сразу.</p>
+        </div>
+        <div class="notice notice--error" id="pw-error" hidden>
+          <svg class="icon"><use href="icons.svg#i-circle-alert"/></svg>
+          <p id="pw-error-text"></p>
+        </div>
+
+        <figure class="chart card" id="chart">
+          <figcaption class="chart__head">
+            <span class="chart__title" id="chart-title">Заряд за сутки</span>
+            <span class="chart__legend num" id="chart-range"></span>
+          </figcaption>
+          <div class="chart__plot" id="chart-plot">
+            <svg class="chart__svg" id="chart-svg" role="img" aria-labelledby="chart-title"></svg>
+            <div class="chart__tip" id="chart-tip" hidden><strong class="num" id="tip-value"></strong><span class="num" id="tip-time"></span></div>
+          </div>
+          <div class="chart__empty" id="chart-empty" hidden>
+            <p class="t-small">График появится после второго замера. По умолчанию заряд читается раз в 15 минут.</p>
+          </div>
+          <table class="sr-only" id="chart-table"><caption>Замеры заряда</caption><thead><tr><th>Время</th><th>Заряд</th><th>Напряжение</th></tr></thead><tbody></tbody></table>
+        </figure>
+
+        <dl class="rows">
+          <div class="row">
+            <dt>Осталось<span class="row__hint" id="pw-left-src">Оценка появится после первого замера</span></dt>
+            <dd class="num" id="pw-left">—</dd>
+          </div>
+          <div class="row">
+            <dt>Автоопрос<span class="row__hint">Если звука нет больше 20 минут — раз в час, чтобы гарнитура могла выключиться</span></dt>
+            <dd>
+              <div class="dropdown" id="poll">
+                <button class="btn dropdown__trigger" aria-haspopup="listbox" aria-expanded="false"><span>Каждые 15 минут</span><svg class="icon"><use href="icons.svg#i-chevron-down"/></svg></button>
+                <ul class="menu menu--right" role="listbox" tabindex="-1">
+                  <li class="menu__item" role="option" data-value="5">Каждые 5 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="15">Каждые 15 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="30">Каждые 30 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                  <li class="menu__item" role="option" data-value="0">Только вручную<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+                </ul>
+              </div>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ===================== Звук ===================== -->
+    <section class="page" data-page="sound" aria-labelledby="h-sound">
+      <header class="page__head">
+        <div>
+          <h1 class="t-h2" id="h-sound">Звук</h1>
+          <p class="page__lead">Громкость устройств G435 в Windows. Кнопки на чашке меняют её же.</p>
+        </div>
+      </header>
+      <section class="group" aria-labelledby="h-hp">
+        <h2 class="group__title" id="h-hp">Наушники</h2>
+        <div class="level card" id="lv-headphones">
+          <div class="level__head"><span class="level__label">Громкость</span><output class="level__value num" id="v-headphones">—</output></div>
+          <div class="level__body">
+            <input class="slider" type="range" min="0" max="100" id="r-headphones" aria-label="Громкость наушников">
+            <button class="btn btn--icon" id="m-headphones" aria-pressed="false" aria-label="Выключить звук"><svg class="icon"><use href="icons.svg#i-volume-2"/></svg></button>
+          </div>
+        </div>
+      </section>
+      <section class="group" aria-labelledby="h-mic">
+        <h2 class="group__title" id="h-mic">Микрофон</h2>
+        <div class="level card" id="lv-microphone">
+          <div class="level__head"><span class="level__label">Уровень записи</span><output class="level__value num" id="v-microphone">—</output></div>
+          <div class="level__body">
+            <input class="slider" type="range" min="0" max="100" id="r-microphone" aria-label="Уровень микрофона">
+            <button class="btn btn--icon" id="m-microphone" aria-pressed="false" aria-label="Выключить микрофон"><svg class="icon"><use href="icons.svg#i-mic"/></svg></button>
+          </div>
+        </div>
+        <p class="group__note">Кнопка mute на гарнитуре глушит микрофон внутри неё и не сообщает об этом компьютеру, поэтому её состояние здесь не видно.</p>
+      </section>
+    </section>
+
+    <!-- ===================== Внешний вид ===================== -->
+    <section class="page page--wide" data-page="look" aria-labelledby="h-look">
+      <header class="page__head">
+        <div>
+          <h1 class="t-h2" id="h-look">Внешний вид</h1>
+          <p class="page__lead">Цвет модели в приложении. На гарнитуру не влияет.</p>
+        </div>
+      </header>
+      <div class="stage stage--short" data-stage></div>
+      <div class="swatches" role="radiogroup" aria-label="Расцветка" id="swatches"></div>
+    </section>
+
+    <!-- ===================== Управление ===================== -->
+    <section class="page" data-page="controls" aria-labelledby="h-controls">
+      <header class="page__head">
+        <div>
+          <h1 class="t-h2" id="h-controls">Управление</h1>
+          <p class="page__lead">Эти функции живут в прошивке и настраиваются только кнопками на гарнитуре.</p>
+        </div>
+      </header>
+      <dl class="rows combos">
+        <div class="row"><dt><kbd>Питание</kbd></dt><dd>Коротко — цвет индикатора показывает заряд: зелёный <span class="nowrap">31–100%</span>, красный <span class="nowrap">15–30%</span>, мигающий красный — меньше 15%.</dd></div>
+        <div class="row"><dt><kbd>Mute</kbd><kbd>×2</kbd></dt><dd>Включить или выключить самопрослушивание.</dd></div>
+        <div class="row"><dt><kbd>Mute</kbd><kbd>Vol ±</kbd></dt><dd>Громкость самопрослушивания.</dd></div>
+        <div class="row"><dt><kbd>Mute</kbd><kbd>Vol ±</kbd><kbd>3 с</kbd></dt><dd>Ограничитель громкости: 85 или 100 дБ.</dd></div>
+      </dl>
+      <p class="group__note">Без активности гарнитура выключается сама через 30 минут.</p>
+    </section>
+
+    <!-- ===================== Настройки ===================== -->
+    <section class="page" data-page="settings" aria-labelledby="h-settings">
+      <header class="page__head">
+        <div>
+          <h1 class="t-h2" id="h-settings">Настройки</h1>
+          <p class="page__lead">Хаб работает в трее, даже когда окно закрыто.</p>
+        </div>
+      </header>
+      <section class="group" aria-labelledby="h-general">
+        <h2 class="group__title" id="h-general">Общие</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt>Тема</dt>
+            <dd><div class="segmented" role="radiogroup" aria-label="Тема" id="theme">
+              <button role="radio" data-theme-value="system"><svg class="icon"><use href="icons.svg#i-monitor"/></svg>Система</button>
+              <button role="radio" data-theme-value="light"><svg class="icon"><use href="icons.svg#i-sun"/></svg>Светлая</button>
+              <button role="radio" data-theme-value="dark"><svg class="icon"><use href="icons.svg#i-moon"/></svg>Тёмная</button>
+            </div></dd>
+          </div>
+          <div class="row">
+            <dt id="l-autostart">Запускать вместе с Windows<span class="row__hint">Сразу в трей, без окна</span></dt>
+            <dd><button class="switch" role="switch" aria-checked="false" aria-labelledby="l-autostart" id="autostart"></button></dd>
+          </div>
+        </dl>
+      </section>
+      <section class="group" aria-labelledby="h-alerts">
+        <h2 class="group__title" id="h-alerts">Уведомления</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt>Предупреждать о низком заряде<span class="row__hint">Ещё одно уведомление придёт при 5%</span></dt>
+            <dd>
+              <label class="field field--suffix field--inline" id="alert-field">
+                <span class="sr-only">Порог, процентов</span>
+                <span class="field__control"><input class="input" id="alert" inputmode="numeric" maxlength="2" value="15"><span class="field__suffix">%</span></span>
+                <span class="field__hint" id="alert-hint" hidden>От 5 до 50</span>
+              </label>
+            </dd>
+          </div>
+        </dl>
+      </section>
+      <section class="group" aria-labelledby="h-data">
+        <h2 class="group__title" id="h-data">Данные</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt>История заряда<span class="row__hint num" id="hist-count">Хранится 7 дней на этом компьютере</span></dt>
+            <dd><button class="btn btn--danger" id="btn-clear">Очистить</button></dd>
+          </div>
+        </dl>
+      </section>
+      <section class="group" aria-labelledby="h-about">
+        <h2 class="group__title" id="h-about">О программе</h2>
+        <dl class="rows about">
+          <div class="row"><dt>Версия</dt><dd class="num">0.3.0 · донгл 046D:0ACB</dd></div>
+          <div class="row"><dt>Протокол батареи</dt><dd><a href="https://github.com/deddroid/logitech-g435-battery" target="_blank" rel="noopener">deddroid/logitech-g435-battery</a>, MIT</dd></div>
+          <div class="row"><dt>3D-модель</dt><dd><a href="https://sketchfab.com/3d-models/fone-logitech-g435-d4cc71d02f6f40a48441f9045fe4e1ae" target="_blank" rel="noopener">Fone Logitech G435</a> — VagnerZNMods, CC-BY-4.0</dd></div>
+          <div class="row"><dt>Шрифт и иконки</dt><dd>Geist (OFL), Lucide (ISC)</dd></div>
+        </dl>
+        <p class="group__note">Неофициальная программа, не связана с Logitech.</p>
+      </section>
+    </section>
+  </main>
+</div>
+
+<dialog class="modal" id="modal-clear" aria-labelledby="mc-title">
+  <form method="dialog">
+    <div class="modal__body">
+      <h3 class="modal__title" id="mc-title">Очистить историю заряда?</h3>
+      <p class="modal__text">График и оценка «осталось» начнут считаться заново. Текущий заряд не изменится.</p>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" value="cancel">Отмена</button>
+      <button class="btn btn--danger" value="confirm" id="mc-confirm">Очистить</button>
+    </div>
+  </form>
+</dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo-full" viewBox="0 0 124 32"><path d="M6.5 17A9.5 9.5 0 0 1 21.31 9.12M23.28 10.89A9.5 9.5 0 0 1 25.5 17" fill="none" stroke="currentColor" stroke-width="3"/><rect x="3" y="16" width="7" height="12" rx="2" fill="currentColor"/><rect x="22" y="16" width="7" height="12" rx="2" fill="currentColor"/><path d="M46.46 28.28L46.46 28.28Q44.68 28.28 43.40 27.45Q42.11 26.61 41.43 25.15Q40.76 23.69 40.76 21.77L40.76 21.77Q40.76 19.88 41.45 18.40Q42.15 16.93 43.45 16.07Q44.75 15.22 46.58 15.22L46.58 15.22Q48.17 15.22 49.25 15.76Q50.33 16.31 50.99 17.28Q51.64 18.25 51.90 19.51L51.90 19.51L49.51 19.64Q49.31 18.53 48.63 17.87Q47.94 17.21 46.60 17.21L46.60 17.21Q45.40 17.21 44.64 17.82Q43.87 18.44 43.49 19.47Q43.12 20.50 43.12 21.77L43.12 21.77Q43.12 23.07 43.49 24.09Q43.86 25.11 44.64 25.70Q45.42 26.29 46.62 26.29L46.62 26.29Q47.55 26.29 48.22 25.90Q48.89 25.52 49.28 24.85Q49.67 24.18 49.70 23.33L49.70 23.33L46.62 23.33L46.62 21.56L51.94 21.56L51.94 28L50.46 28L50.35 26.12Q49.88 27.10 48.83 27.69Q47.78 28.28 46.46 28.28ZM61.44 28L59.15 28L59.15 25.50L52.89 25.50L52.89 23.63L58.79 15.50L61.44 15.50L61.44 23.51L62.94 23.51L62.94 25.50L61.44 25.50L61.44 28ZM59.15 18.48L55.39 23.51L59.15 23.51L59.15 18.48ZM68.61 28.28L68.61 28.28Q66.37 28.28 65.16 27.24Q63.94 26.20 63.86 24.48L63.86 24.48L66.20 24.37Q66.29 25.38 66.94 25.83Q67.59 26.29 68.61 26.29L68.61 26.29Q69.65 26.29 70.37 25.83Q71.09 25.38 71.09 24.37L71.09 24.37Q71.09 23.37 70.40 22.87Q69.72 22.37 68.57 22.37L68.57 22.37L67.48 22.37L67.48 20.55L68.57 20.55Q69.47 20.55 70.08 20.17Q70.69 19.80 70.69 18.90L70.69 18.90Q70.69 18.11 70.18 17.66Q69.67 17.21 68.63 17.21L68.63 17.21Q67.57 17.21 67.04 17.63Q66.51 18.05 66.43 18.74L66.43 18.74L64.08 18.62Q64.26 17.08 65.44 16.15Q66.62 15.22 68.63 15.22L68.63 15.22Q70.74 15.22 71.89 16.15Q73.05 17.08 73.05 18.69L73.05 18.69Q73.05 20.66 70.86 21.35L70.86 21.35Q72.10 21.68 72.77 22.50Q73.45 23.32 73.45 24.50L73.45 24.50Q73.45 25.69 72.85 26.54Q72.25 27.38 71.16 27.83Q70.07 28.28 68.61 28.28ZM79.65 28.28L79.65 28.28Q77.46 28.28 76.26 27.28Q75.05 26.27 74.91 24.64L74.91 24.64L77.25 24.51Q77.39 25.39 78.02 25.83Q78.64 26.27 79.65 26.27L79.65 26.27Q80.79 26.27 81.43 25.65Q82.08 25.02 82.08 23.88L82.08 23.88Q82.08 22.79 81.43 22.13Q80.77 21.47 79.63 21.47L79.63 21.47Q78.84 21.47 78.25 21.81Q77.66 22.15 77.39 22.72L77.39 22.72L75.07 22.72L75.93 15.50L83.59 15.50L83.59 17.49L77.92 17.49L77.52 20.68Q78.50 19.67 80.25 19.67L80.25 19.67Q81.51 19.67 82.46 20.22Q83.40 20.76 83.92 21.72Q84.44 22.68 84.44 23.88L84.44 23.88Q84.44 25.22 83.84 26.20Q83.24 27.19 82.17 27.74Q81.09 28.28 79.65 28.28ZM92.46 28L90.95 28L90.95 15.50L92.46 15.50L92.46 20.98L98.75 20.98L98.75 15.50L100.26 15.50L100.26 28L98.75 28L98.75 22.45L92.46 22.45L92.46 28ZM105.65 28.21L105.65 28.21Q104.26 28.21 103.42 27.27Q102.59 26.33 102.59 24.67L102.59 24.67L102.59 18.67L104.07 18.67L104.07 24.27Q104.07 25.62 104.55 26.27Q105.04 26.91 106.04 26.91L106.04 26.91Q107.15 26.91 107.78 26.20Q108.42 25.48 108.42 24.23L108.42 24.23L108.42 18.67L109.89 18.67L109.89 28L108.49 28L108.49 26.49Q107.71 28.21 105.65 28.21ZM116.37 28.21L116.37 28.21Q115.40 28.21 114.65 27.78Q113.89 27.35 113.49 26.59L113.49 26.59L113.43 28L112.10 28L112.10 15.50L113.57 15.50L113.57 19.97Q113.93 19.39 114.67 18.92Q115.40 18.46 116.37 18.46L116.37 18.46Q117.61 18.46 118.50 19.06Q119.40 19.65 119.89 20.75Q120.39 21.84 120.39 23.33L120.39 23.33Q120.39 24.83 119.89 25.92Q119.40 27.01 118.50 27.61Q117.61 28.21 116.37 28.21ZM116.29 26.80L116.29 26.80Q117.46 26.80 118.15 25.87Q118.84 24.94 118.84 23.33L118.84 23.33Q118.84 21.71 118.15 20.79Q117.46 19.87 116.32 19.87L116.32 19.87Q115.04 19.87 114.30 20.79Q113.57 21.71 113.57 23.33L113.57 23.33Q113.57 24.94 114.30 25.87Q115.02 26.80 116.29 26.80Z" fill="currentColor"/></symbol>
+</svg>
+<script type="module" src="app.js"></script>
+</body>
+</html>

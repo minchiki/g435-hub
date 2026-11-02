@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Компоненты — G435 Hub</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<style>
+  body { display: grid; grid-template-columns: 1fr 1fr; }
+  .pane { background: var(--bg); color: var(--text); padding: var(--s-8); display: grid; gap: var(--s-6); align-content: start; }
+  .group { display: grid; gap: var(--s-3); }
+  .group > h2 { margin: 0; font-size: var(--t-12); line-height: var(--lh-12); font-weight: var(--w-medium); color: var(--text-muted); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+  .demo-menu { position: relative; height: 144px; }
+  .demo-menu .menu { position: static; opacity: 1; transform: none; visibility: visible; pointer-events: auto; width: 200px; margin-top: var(--s-1); }
+  .demo-modal { position: static; display: block; width: 100%; }
+  .toasts.demo { position: static; width: 100%; }
+</style>
+</head>
+<body>
+<template id="tpl">
+  <section class="group"><h2>Button — default · hover · focus-visible · active · disabled · loading</h2>
+    <div class="row">
+      <button class="btn btn--primary">Обновить заряд</button>
+      <button class="btn btn--primary is-hover">Обновить заряд</button>
+      <button class="btn btn--primary is-focus">Обновить заряд</button>
+      <button class="btn btn--primary is-active">Обновить заряд</button>
+      <button class="btn btn--primary" disabled>Обновить заряд</button>
+      <button class="btn btn--primary is-loading">Обновить заряд</button>
+    </div>
+    <div class="row">
+      <button class="btn"><svg class="icon"><use href="icons.svg#i-refresh-cw"/></svg>Повторить</button>
+      <button class="btn is-hover">Повторить</button>
+      <button class="btn is-focus">Повторить</button>
+      <button class="btn is-active">Повторить</button>
+      <button class="btn" disabled>Повторить</button>
+      <button class="btn is-loading">Повторить</button>
+    </div>
+    <div class="row">
+      <button class="btn btn--ghost">Отмена</button>
+      <button class="btn btn--ghost is-hover">Отмена</button>
+      <button class="btn btn--danger">Очистить историю</button>
+      <button class="btn btn--danger is-hover">Очистить историю</button>
+      <button class="btn btn--icon btn--ghost" aria-label="Настройки"><svg class="icon"><use href="icons.svg#i-settings"/></svg></button>
+    </div>
+  </section>
+
+  <section class="group"><h2>Input — default · hover · focus · invalid · disabled · loading</h2>
+    <div class="row" style="align-items:start">
+      <label class="field field--suffix" style="width:180px"><span class="field__label">Предупреждать при</span>
+        <span class="field__control"><input class="input" value="15" inputmode="numeric"><span class="field__suffix">%</span></span>
+        <span class="field__hint">От 5 до 50%</span></label>
+      <label class="field field--suffix" style="width:180px"><span class="field__label">Hover</span>
+        <span class="field__control"><input class="input is-hover" value="15"><span class="field__suffix">%</span></span></label>
+      <label class="field field--suffix" style="width:180px"><span class="field__label">Focus</span>
+        <span class="field__control"><input class="input is-focus" value="15"><span class="field__suffix">%</span></span></label>
+    </div>
+    <div class="row" style="align-items:start">
+      <label class="field field--suffix is-invalid" style="width:180px"><span class="field__label">Предупреждать при</span>
+        <span class="field__control"><input class="input" value="80"><span class="field__suffix">%</span></span>
+        <span class="field__hint">Введите число от 5 до 50</span></label>
+      <label class="field field--suffix" style="width:180px"><span class="field__label">Disabled</span>
+        <span class="field__control"><input class="input" value="15" disabled><span class="field__suffix">%</span></span></label>
+      <label class="field is-loading" style="width:180px"><span class="field__label">Loading</span>
+        <span class="field__control"><input class="input" value="15"></span></label>
+    </div>
+  </section>
+
+  <section class="group"><h2>Card — default · hover · focus · selected · disabled · loading</h2>
+    <div class="row" style="display:grid;grid-template-columns:repeat(3,1fr)">
+      <button class="card card--interactive" role="radio" aria-checked="false"><p class="card__title">Black &amp; Neon Yellow</p><p class="card__meta">Чёрный корпус</p></button>
+      <button class="card card--interactive is-hover"><p class="card__title">White &amp; Lilac</p><p class="card__meta">Белый корпус</p></button>
+      <button class="card card--interactive is-focus"><p class="card__title">Blue &amp; Raspberry</p><p class="card__meta">Синий корпус</p></button>
+      <button class="card card--interactive" aria-checked="true"><p class="card__title">Blue &amp; Raspberry</p><p class="card__meta">Выбрано</p></button>
+      <div class="card is-disabled"><p class="card__title">Микрофон</p><p class="card__meta">Не найден</p></div>
+      <div class="card"><span class="skeleton" style="width:60%;height:12px"></span><span class="skeleton" style="width:40%;height:12px;margin-top:var(--s-2)"></span></div>
+    </div>
+  </section>
+
+  <section class="group"><h2>Dropdown — closed · open (hover, selected) · disabled</h2>
+    <div class="row" style="align-items:start">
+      <div class="dropdown"><button class="btn dropdown__trigger">Каждые 15 минут<svg class="icon"><use href="icons.svg#i-chevron-down"/></svg></button></div>
+      <div class="dropdown is-open demo-menu"><button class="btn dropdown__trigger is-focus">Каждые 15 минут<svg class="icon"><use href="icons.svg#i-chevron-down"/></svg></button>
+        <ul class="menu" role="listbox">
+          <li class="menu__item" role="option">Каждые 5 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+          <li class="menu__item is-active-desc" role="option" aria-selected="true">Каждые 15 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+          <li class="menu__item" role="option">Каждые 30 минут<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+          <li class="menu__item" role="option" aria-disabled="true">Вручную<svg class="icon"><use href="icons.svg#i-check"/></svg></li>
+        </ul></div>
+      <div class="dropdown"><button class="btn dropdown__trigger" disabled>Каждые 15 минут<svg class="icon"><use href="icons.svg#i-chevron-down"/></svg></button></div>
+    </div>
+  </section>
+
+  <section class="group"><h2>Switch · Slider · Segmented · Badge</h2>
+    <div class="row">
+      <button class="switch" role="switch" aria-checked="true" aria-label="Автозапуск"></button>
+      <button class="switch" role="switch" aria-checked="false" aria-label="Автозапуск"></button>
+      <button class="switch" role="switch" aria-checked="true" disabled aria-label="Автозапуск"></button>
+      <input class="slider" type="range" value="58" style="--fill:58%;width:160px" aria-label="Громкость">
+      <input class="slider" type="range" value="27" style="--fill:27%;width:120px" disabled aria-label="Микрофон">
+    </div>
+    <div class="row">
+      <div class="segmented" role="radiogroup"><button role="radio" aria-checked="false">Система</button><button role="radio" aria-checked="true">Светлая</button><button role="radio" aria-checked="false">Тёмная</button></div>
+      <span class="badge badge--success"><svg class="icon"><use href="icons.svg#i-circle-check"/></svg>Подключено</span>
+      <span class="badge badge--warning">Заряд 12%</span>
+      <span class="badge badge--error">Нет донгла</span>
+      <span class="badge badge--accent">Заряжается</span>
+    </div>
+  </section>
+
+  <section class="group"><h2>Modal</h2>
+    <dialog class="modal demo-modal" open>
+      <div class="modal__body"><h3 class="modal__title">Очистить историю заряда?</h3>
+        <p class="modal__text">График и оценка «осталось» начнут считаться заново. Текущий заряд не изменится.</p></div>
+      <div class="modal__footer"><button class="btn btn--ghost">Отмена</button><button class="btn btn--danger">Очистить</button></div>
+    </dialog>
+  </section>
+
+  <section class="group"><h2>Toast — default · success · error</h2>
+    <div class="toasts demo">
+      <div class="toast toast--success"><svg class="icon"><use href="icons.svg#i-circle-check"/></svg><div><p class="toast__title">Заряд обновлён</p><p class="toast__text">46% · 3753 мВ</p></div><button class="btn btn--ghost btn--icon" aria-label="Закрыть"><svg class="icon"><use href="icons.svg#i-x"/></svg></button></div>
+      <div class="toast toast--error"><svg class="icon"><use href="icons.svg#i-circle-alert"/></svg><div><p class="toast__title">Не удалось прочитать заряд</p><p class="toast__text">Гарнитура выключена. Включите её и повторите.</p></div><button class="btn btn--ghost btn--icon" aria-label="Закрыть"><svg class="icon"><use href="icons.svg#i-x"/></svg></button></div>
+    </div>
+  </section>
+
+  <section class="group"><h2>Empty state · Skeleton</h2>
+    <div class="empty" style="padding:0">
+      <span class="empty__icon"><svg class="icon icon--20"><use href="icons.svg#i-usb"/></svg></span>
+      <h3 class="empty__title">Донгл не подключён</h3>
+      <p class="empty__text">Вставьте приёмник LIGHTSPEED в USB-порт. Хаб найдёт его сам.</p>
+      <button class="btn">Как найти донгл</button>
+    </div>
+    <div class="row"><span class="skeleton" style="width:96px;height:48px"></span><div style="display:grid;gap:var(--s-2)"><span class="skeleton" style="width:180px;height:12px"></span><span class="skeleton" style="width:120px;height:12px"></span></div></div>
+  </section>
+</template>
+<main class="pane" data-theme="light" id="light"></main>
+<main class="pane" data-theme="dark" id="dark"></main>
+<script>
+  for (const id of ['light', 'dark']) document.getElementById(id).append(document.getElementById('tpl').content.cloneNode(true));
+</script>
+</body>
+</html>
